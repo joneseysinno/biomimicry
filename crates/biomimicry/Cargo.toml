@@ -1,0 +1,40 @@
+[package]
+name = "biomimicry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Biological computing engine — computation as settling in a living hypergraph"
+readme = "../../README.md"
+keywords = ["biomimicry", "hypergraph", "computing", "homeostasis"]
+categories = ["science", "simulation"]
+
+[features]
+default = ["memory-store", "determinism"]
+memory-store = []
+# Marker only — concrete `infinite-db` Store lives in `biomimicry-substrate`
+# to avoid a circular crate dependency (substrate → core → substrate).
+infinite-db = []
+determinism = []
+inspector = []
+
+[dependencies]
+thiserror = { workspace = true }
+blake3 = { workspace = true }
+smol_str = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[lints]
+workspace = true
+
+[[example]]
+name = "minimal_organism"
+path = "../../examples/minimal_organism.rs"
+
+[[example]]
+name = "first_settle"
+path = "../../examples/first_settle.rs"

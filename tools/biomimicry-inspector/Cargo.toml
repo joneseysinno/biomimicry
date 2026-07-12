@@ -1,0 +1,20 @@
+[package]
+name = "biomimicry-inspector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Dev tool: render causal DAG and attractor landscape traces for biomimicry"
+readme = "../../README.md"
+
+[[bin]]
+name = "biomimicry-inspector"
+path = "src/main.rs"
+
+[dependencies]
+biomimicry = { workspace = true, features = ["inspector"] }
+
+[lints]
+workspace = true

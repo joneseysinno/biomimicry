@@ -1,0 +1,22 @@
+[package]
+name = "biomimicry-substrate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "infinite-db-backed Store implementation for biomimicry"
+readme = "../../README.md"
+
+[features]
+default = ["infinite-db"]
+infinite-db = ["dep:infinite-db"]
+
+[dependencies]
+biomimicry = { path = "../biomimicry", version = "0.1.0", default-features = false, features = ["memory-store"] }
+infinite-db = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

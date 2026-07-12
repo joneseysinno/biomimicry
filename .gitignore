@@ -1,0 +1,10 @@
+/target/
+**/target/
+**/*.rs.bk
+/plans/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

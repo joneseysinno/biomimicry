@@ -1,0 +1,64 @@
+//! # biomimicry
+//!
+//! Biological computing engine: computation as *settling* in a living hypergraph.
+//!
+//! There is no `main()` and no orchestrator — you build an [`organism::Organism`]
+//! and [`organism::Organism::perturb`] it, then wait for it to
+//! [`organism::Organism::settle`].
+//!
+//! ## Module map
+//!
+//! | Module | Role |
+//! |--------|------|
+//! | [`genesis`] | DNA — spatial hypergraph + genome |
+//! | [`cell`] | Relational automaton |
+//! | [`ganglion`] | Bounded cell population |
+//! | [`signal`] | Regulatory / operational signals |
+//! | [`metabolism`] | Two-phase scheduler |
+//! | [`medium`] | Signaling delivery / diffusion |
+//! | [`expression`] | Phase 1 rule network |
+//! | [`transduction`] | Phase 2 cascades |
+//! | [`homeostasis`] | Negative-feedback loops |
+//! | [`attractor`] | Landscape / convergence |
+//! | [`membrane`] | Boundary / interface model |
+//! | [`causality`] | Clocks, DAG, determinism |
+//! | [`substrate`] | `Store` trait + in-memory impl |
+//! | [`sensorium`] | Sensory templates + readout |
+//! | [`organism`] | Aggregate root you perturb |
+//!
+//! ## Convention
+//!
+//! Every `<module>.rs` holds only docs, `mod` declarations, and `pub use` re-exports.
+//! Types and functions live in leaf files named for a single concern. No `mod.rs`.
+
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+pub mod attractor;
+pub mod causality;
+pub mod cell;
+pub mod error;
+pub mod expression;
+pub mod ganglion;
+pub mod genesis;
+pub mod homeostasis;
+pub mod medium;
+pub mod membrane;
+pub mod metabolism;
+pub mod organism;
+pub mod prelude;
+pub mod sensorium;
+pub mod signal;
+pub mod substrate;
+pub mod transduction;
+
+#[cfg(test)]
+mod smoke {
+    use crate::substrate::{MemoryStore, Store};
+
+    #[test]
+    fn scaffold_memory_store_constructs() {
+        let store = MemoryStore::new();
+        let hg = store.load_hypergraph().expect("load");
+        assert!(hg.edges().next().is_none());
+    }
+}
