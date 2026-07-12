@@ -1,0 +1,14 @@
+# Enforce LF line endings for all text files to avoid rustfmt "Incorrect newline style" errors on Windows
+* text=auto eol=lf
+
+# Rust source files
+*.rs text eol=lf
+
+# TOML configuration files
+*.toml text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# Lock files
+*.lock text eol=lf
