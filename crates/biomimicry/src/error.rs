@@ -57,21 +57,21 @@ pub enum BiomimicryError {
         k: u32,
     },
 
-    /// Hyperedge failed structural validation.
-    #[error("malformed hyperedge: {reason}")]
-    MalformedHyperedge {
+    /// Cistron failed structural validation.
+    #[error("malformed cistron: {reason}")]
+    MalformedCistron {
         /// Human-readable reason.
         reason: String,
     },
 
-    /// Endpoint references a node absent from the hypergraph.
+    /// Endpoint references a node absent from the GRN.
     #[error("dangling endpoint: node {node:?}")]
     DanglingEndpoint {
         /// Missing node id.
         node: PrimitiveNodeId,
     },
 
-    /// Exact `(node, polarity, role, scope)` tuple appears twice on one hyperedge.
+    /// Exact `(node, polarity, role, scope)` tuple appears twice on one cistron.
     #[error("duplicate endpoint: node {node:?} polarity {polarity:?}")]
     DuplicateEndpoint {
         /// Node involved.
@@ -80,8 +80,8 @@ pub enum BiomimicryError {
         polarity: EndpointPolarity,
     },
 
-    /// Hyperedge `kind` was empty.
-    #[error("empty hyperedge kind")]
+    /// Cistron `kind` was empty.
+    #[error("empty cistron kind")]
     EmptyKind,
 
     /// Requested distance mode is not available yet.

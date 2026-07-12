@@ -6,9 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Biological computing engine — computation as settling in a living hypergraph"
+description = "Biological computing engine — computation as settling in a living GRN"
 readme = "../../README.md"
-keywords = ["biomimicry", "hypergraph", "computing", "homeostasis"]
+keywords = ["biomimicry", "grn", "computing", "homeostasis"]
 categories = ["science", "simulation"]
 
 [features]

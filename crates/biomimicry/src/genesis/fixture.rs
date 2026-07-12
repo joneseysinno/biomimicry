@@ -1,8 +1,8 @@
 //! M1 integration fixture: toy DNA including `sensory_spike`.
 
 use crate::genesis::{
-    DimensionVector, EndpointPolarity, EndpointRef, Hyperedge, Primitive, PrimitiveNode,
-    PrimitiveNodeId, SpatialHypergraph, endpoint,
+    Cistron, DimensionVector, EndpointPolarity, EndpointRef, Grn, Primitive, PrimitiveNode,
+    PrimitiveNodeId, endpoint,
 };
 use crate::signal::Scope;
 
@@ -11,8 +11,8 @@ use crate::signal::Scope;
 /// Endpoints for sensory_spike (declaration order):
 /// `Receptor+`, `Expression+`, `Signal+ scope=Systemwide`, `Expression−`, `Transduction−`.
 #[must_use]
-pub fn toy_dna() -> SpatialHypergraph {
-    let mut g = SpatialHypergraph::new();
+pub fn toy_dna() -> Grn {
+    let mut g = Grn::new();
 
     let receptor = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0, 0]));
     let expr = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([2, 0]));
@@ -36,7 +36,7 @@ pub fn toy_dna() -> SpatialHypergraph {
         g.add_node(n).expect("add node");
     }
 
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "sensory_spike",
         vec![
             endpoint(&receptor, EndpointPolarity::Positive, "trigger", None),
@@ -52,7 +52,7 @@ pub fn toy_dna() -> SpatialHypergraph {
         ],
     ));
 
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "local_gate",
         vec![
             endpoint(&r2, EndpointPolarity::Positive, "in", None),
@@ -60,7 +60,7 @@ pub fn toy_dna() -> SpatialHypergraph {
         ],
     ));
 
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "homeostatic_neutral",
         vec![
             endpoint(&t_a, EndpointPolarity::Positive, "x", None),
@@ -76,8 +76,8 @@ pub fn toy_dna() -> SpatialHypergraph {
 ///
 /// Endpoints for cascade_path: `Receptor+ trigger`, `Expression+`, `Transduction+`.
 #[must_use]
-pub fn cascade_dna() -> SpatialHypergraph {
-    let mut g = SpatialHypergraph::new();
+pub fn cascade_dna() -> Grn {
+    let mut g = Grn::new();
 
     let receptor = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0, 0]));
     let expr = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([2, 0]));
@@ -95,7 +95,7 @@ pub fn cascade_dna() -> SpatialHypergraph {
         g.add_node(n).expect("add node");
     }
 
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "cascade_path",
         vec![
             endpoint(&receptor, EndpointPolarity::Positive, "trigger", None),
@@ -104,7 +104,7 @@ pub fn cascade_dna() -> SpatialHypergraph {
         ],
     ));
 
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "effector",
         vec![
             endpoint(&r2, EndpointPolarity::Positive, "gate", None),
@@ -115,12 +115,12 @@ pub fn cascade_dna() -> SpatialHypergraph {
     g
 }
 
-/// Append a deliberately invalid (dangling) hyperedge to a clone of `base`.
+/// Append a deliberately invalid (dangling) cistron to a clone of `base`.
 #[must_use]
-pub fn with_dangling(base: &SpatialHypergraph) -> SpatialHypergraph {
+pub fn with_dangling(base: &Grn) -> Grn {
     let mut g = base.clone();
     let missing = PrimitiveNodeId(0xDEAD_BEEF_DEAD_BEEF_DEAD_BEEF_DEAD_BEEF);
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "bogus",
         vec![EndpointRef::new(
             missing,
@@ -166,7 +166,7 @@ mod tests {
             .next()
             .expect("neutral");
 
-        let edges: Vec<_> = dna.iter_hyperedges().cloned().collect();
+        let edges: Vec<_> = dna.iter_cistrons().cloned().collect();
         assert_eq!(GeneId::of_in_graph(&edges[0], &dna), spike_id);
         assert_eq!(GeneId::of_in_graph(&edges[1], &dna), gate_id);
         assert_eq!(GeneId::of_in_graph(&edges[2], &dna), neutral_id);
@@ -198,14 +198,14 @@ mod tests {
         let dna = toy_dna();
         let mut store = MemoryStore::new();
         dna.persist(&mut store).unwrap();
-        let loaded = SpatialHypergraph::load(&store).unwrap();
+        let loaded = Grn::load(&store).unwrap();
         assert_eq!(loaded, dna);
         let g1 = compile(&dna).unwrap();
         let g2 = compile(&loaded).unwrap();
         assert_eq!(g1.traversed_ids(), g2.traversed_ids());
         assert_eq!(g1.len(), g2.len());
         for gene in g1.iter() {
-            assert_eq!(g2.get(gene.id).map(|g| &g.hyperedge), Some(&gene.hyperedge));
+            assert_eq!(g2.get(gene.id).map(|g| &g.cistron), Some(&gene.cistron));
         }
     }
 }

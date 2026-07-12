@@ -1,16 +1,15 @@
 //! AEC wall-move DNA — matched SignalKind surfaces only.
 
 use biomimicry::genesis::{
-    DimensionVector, EndpointPolarity, Hyperedge, Primitive, PrimitiveNode, SpatialHypergraph,
-    endpoint,
+    Cistron, DimensionVector, EndpointPolarity, Grn, Primitive, PrimitiveNode, endpoint,
 };
 
 use crate::kinds::WALL_MOVE;
 
-/// Spatial hypergraph for the wall-move reflex path (+ thin effector).
+/// Gene regulatory network for the wall-move reflex path (+ thin effector).
 #[must_use]
-pub fn aec_dna() -> SpatialHypergraph {
-    let mut g = SpatialHypergraph::new();
+pub fn aec_dna() -> Grn {
+    let mut g = Grn::new();
 
     let receptor = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0, 0]));
     let expr = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([2, 0]));
@@ -28,7 +27,7 @@ pub fn aec_dna() -> SpatialHypergraph {
         g.add_node(n).expect("add node");
     }
 
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "wall_move_path",
         vec![
             endpoint(&receptor, EndpointPolarity::Positive, WALL_MOVE, None),
@@ -37,7 +36,7 @@ pub fn aec_dna() -> SpatialHypergraph {
         ],
     ));
 
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "aec_effector",
         vec![
             endpoint(&r2, EndpointPolarity::Positive, "gate", None),

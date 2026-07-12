@@ -1,26 +1,26 @@
-//! `Store` trait — hypergraph / causal persistence contract.
+//! `Store` trait — grn / causal persistence contract.
 //!
 //! The engine depends only on this trait. The default implementation is
 //! [`crate::substrate::MemoryStore`]; the `infinite-db` backing lives in the
 //! separate `biomimicry-substrate` crate.
 //!
-//! Hypergraph-facing methods (`put_node` / `get_node` / `put_hyperedge` /
-//! `iter_*` / `clear_hypergraph`) are fleshed out in M1 so infinite-db is a
+//! GRN-facing methods (`put_node` / `get_node` / `put_cistron` /
+//! `iter_*` / `clear_grn`) are fleshed out in M1 so infinite-db is a
 //! genuine drop-in at M7. The causal half waits for M7.
 
 use crate::causality::{CausalDag, CausalEventLog, CausalNode};
 use crate::error::Result;
-use crate::genesis::{Hyperedge, Hypergraph, PrimitiveNode, PrimitiveNodeId};
+use crate::genesis::{Cistron, Grn, PrimitiveNode, PrimitiveNodeId};
 use crate::substrate::{BranchId, SnapshotId, SnapshotMeta};
 
-/// Persistence contract for DNA hypergraph, genome artifacts, and causal logs.
+/// Persistence contract for DNA GRN, genome artifacts, and causal logs.
 pub trait Store {
-    /// Remove all hypergraph nodes and edges (prep for a full persist).
+    /// Remove all grn nodes and edges (prep for a full persist).
     ///
     /// # Errors
     ///
     /// Returns an error on I/O failure.
-    fn clear_hypergraph(&mut self) -> Result<()>;
+    fn clear_grn(&mut self) -> Result<()>;
 
     /// Upsert a primitive node.
     ///
@@ -43,42 +43,42 @@ pub trait Store {
     /// Returns an error on I/O failure.
     fn iter_nodes(&self) -> Result<Vec<PrimitiveNode>>;
 
-    /// Append / upsert a hyperedge.
+    /// Append / upsert a cistron.
     ///
     /// # Errors
     ///
     /// Returns an error on I/O failure.
-    fn put_hyperedge(&mut self, edge: &Hyperedge) -> Result<()>;
+    fn put_cistron(&mut self, edge: &Cistron) -> Result<()>;
 
-    /// Iterate all stored hyperedges.
+    /// Iterate all stored cistrons.
     ///
     /// # Errors
     ///
     /// Returns an error on I/O failure.
-    fn iter_hyperedges(&self) -> Result<Vec<Hyperedge>>;
+    fn iter_cistrons(&self) -> Result<Vec<Cistron>>;
 
-    /// Load the working DNA hypergraph (convenience over fine-grained reads).
+    /// Load the working DNA GRN (convenience over fine-grained reads).
     ///
     /// # Errors
     ///
     /// Returns an error on I/O or corruption.
-    fn load_hypergraph(&self) -> Result<Hypergraph>
+    fn load_grn(&self) -> Result<Grn>
     where
         Self: Sized,
     {
-        Hypergraph::load(self)
+        Grn::load(self)
     }
 
-    /// Persist the DNA hypergraph (convenience over fine-grained writes).
+    /// Persist the DNA GRN (convenience over fine-grained writes).
     ///
     /// # Errors
     ///
     /// Returns an error on I/O failure.
-    fn save_hypergraph(&mut self, hypergraph: &Hypergraph) -> Result<()>
+    fn save_grn(&mut self, grn: &Grn) -> Result<()>
     where
         Self: Sized,
     {
-        hypergraph.persist(self)
+        grn.persist(self)
     }
 
     /// Append a causal event (Phase 1 or Phase 2 log).

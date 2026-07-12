@@ -1,4 +1,4 @@
-//! Primitive nodes, coordinates, and hyperedge endpoint references.
+//! Primitive nodes, coordinates, and cistron endpoint references.
 //!
 //! [`PrimitiveNodeId`] is the content hash of `(primitive, coord)`. Two nodes
 //! with the same primitive type and structural coordinate *are* the same node.
@@ -66,7 +66,7 @@ impl PrimitiveNodeId {
     }
 }
 
-/// A node in the DNA spatial hypergraph.
+/// A node in the DNA gene regulatory network.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PrimitiveNode {
     /// Content-addressed id.
@@ -120,10 +120,10 @@ impl From<String> for Role {
     }
 }
 
-/// One pole of a gene hyperedge: a node reference plus polarity / role / scope.
+/// One pole of a gene cistron: a node reference plus polarity / role / scope.
 ///
 /// `primitive` is denormalized from the node so runtime matching (M2+) can
-/// classify endpoints from `Genome` alone without retaining the hypergraph.
+/// classify endpoints from `Genome` alone without retaining the grn.
 /// It must match the node's primitive; identity hashing still keys on `node`.
 ///
 /// Only [`Primitive::Signal`] endpoints typically populate `scope`; others leave

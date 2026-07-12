@@ -4,16 +4,16 @@ use std::collections::BTreeMap;
 
 use crate::causality::{CausalDag, CausalEventLog, CausalNode};
 use crate::error::{BiomimicryError, Result};
-use crate::genesis::{Hyperedge, PrimitiveNode, PrimitiveNodeId};
+use crate::genesis::{Cistron, PrimitiveNode, PrimitiveNodeId};
 use crate::substrate::{BranchId, SnapshotId, SnapshotMeta, Store};
 
-/// Retained snapshot payload (hypergraph + causal + optional event log).
+/// Retained snapshot payload (grn + causal + optional event log).
 #[derive(Debug, Clone, Default)]
 pub struct SnapshotPayload {
     /// Primitive nodes at snapshot time.
     pub nodes: BTreeMap<PrimitiveNodeId, PrimitiveNode>,
-    /// Hyperedges at snapshot time.
-    pub hyperedges: Vec<Hyperedge>,
+    /// Cistrons at snapshot time.
+    pub cistrons: Vec<Cistron>,
     /// Causal DAG at snapshot time.
     pub causal: CausalDag,
     /// Optional event log clone for organism restore.
@@ -24,7 +24,7 @@ pub struct SnapshotPayload {
 #[derive(Debug, Clone, Default)]
 pub struct MemoryStore {
     nodes: BTreeMap<PrimitiveNodeId, PrimitiveNode>,
-    hyperedges: Vec<Hyperedge>,
+    cistrons: Vec<Cistron>,
     causal: CausalDag,
     /// Working event log attached before snapshot (organism path).
     event_log: Option<CausalEventLog>,
@@ -50,7 +50,7 @@ impl MemoryStore {
     pub fn capture_live(&self) -> SnapshotPayload {
         SnapshotPayload {
             nodes: self.nodes.clone(),
-            hyperedges: self.hyperedges.clone(),
+            cistrons: self.cistrons.clone(),
             causal: self.causal.clone(),
             event_log: self.event_log.clone(),
         }
@@ -59,7 +59,7 @@ impl MemoryStore {
     /// Apply a payload to live state (does not clear snapshot map).
     pub fn apply_payload(&mut self, payload: &SnapshotPayload) {
         self.nodes.clone_from(&payload.nodes);
-        self.hyperedges.clone_from(&payload.hyperedges);
+        self.cistrons.clone_from(&payload.cistrons);
         self.causal.clone_from(&payload.causal);
         self.event_log.clone_from(&payload.event_log);
     }
@@ -84,9 +84,9 @@ impl MemoryStore {
 }
 
 impl Store for MemoryStore {
-    fn clear_hypergraph(&mut self) -> Result<()> {
+    fn clear_grn(&mut self) -> Result<()> {
         self.nodes.clear();
-        self.hyperedges.clear();
+        self.cistrons.clear();
         Ok(())
     }
 
@@ -103,13 +103,13 @@ impl Store for MemoryStore {
         Ok(self.nodes.values().cloned().collect())
     }
 
-    fn put_hyperedge(&mut self, edge: &Hyperedge) -> Result<()> {
-        self.hyperedges.push(edge.clone());
+    fn put_cistron(&mut self, edge: &Cistron) -> Result<()> {
+        self.cistrons.push(edge.clone());
         Ok(())
     }
 
-    fn iter_hyperedges(&self) -> Result<Vec<Hyperedge>> {
-        Ok(self.hyperedges.clone())
+    fn iter_cistrons(&self) -> Result<Vec<Cistron>> {
+        Ok(self.cistrons.clone())
     }
 
     fn append_causal(&mut self, node: CausalNode) -> Result<()> {
@@ -183,7 +183,7 @@ mod durable {
     use crate::causality::{CausalEdgeKind, CausalEvent, CausalStamp};
     use crate::cell::CellId;
     use crate::genesis::{
-        DimensionVector, Directionality, EndpointPolarity, EndpointRef, HyperedgeKind, Primitive,
+        CistronKind, DimensionVector, Directionality, EndpointPolarity, EndpointRef, Primitive,
         Role,
     };
     use crate::signal::{Scope, SignalId};
@@ -249,9 +249,9 @@ mod durable {
         for node in store.nodes.values() {
             write_node(buf, node);
         }
-        write_u64(buf, store.hyperedges.len() as u64);
-        for edge in &store.hyperedges {
-            write_hyperedge(buf, edge);
+        write_u64(buf, store.cistrons.len() as u64);
+        for edge in &store.cistrons {
+            write_cistron(buf, edge);
         }
         write_dag(buf, &store.causal);
         write_opt_log(buf, store.event_log.as_ref());
@@ -265,7 +265,7 @@ mod durable {
         }
         let n_edges = r.u64()? as usize;
         for _ in 0..n_edges {
-            store.hyperedges.push(read_hyperedge(r)?);
+            store.cistrons.push(read_cistron(r)?);
         }
         store.causal = read_dag(r)?;
         store.event_log = read_opt_log(r)?;
@@ -277,9 +277,9 @@ mod durable {
         for node in payload.nodes.values() {
             write_node(buf, node);
         }
-        write_u64(buf, payload.hyperedges.len() as u64);
-        for edge in &payload.hyperedges {
-            write_hyperedge(buf, edge);
+        write_u64(buf, payload.cistrons.len() as u64);
+        for edge in &payload.cistrons {
+            write_cistron(buf, edge);
         }
         write_dag(buf, &payload.causal);
         write_opt_log(buf, payload.event_log.as_ref());
@@ -292,16 +292,16 @@ mod durable {
             let node = read_node(r)?;
             nodes.insert(node.id, node);
         }
-        let mut hyperedges = Vec::new();
+        let mut cistrons = Vec::new();
         let n_edges = r.u64()? as usize;
         for _ in 0..n_edges {
-            hyperedges.push(read_hyperedge(r)?);
+            cistrons.push(read_cistron(r)?);
         }
         let causal = read_dag(r)?;
         let event_log = read_opt_log(r)?;
         Ok(SnapshotPayload {
             nodes,
-            hyperedges,
+            cistrons,
             causal,
             event_log,
         })
@@ -437,7 +437,7 @@ mod durable {
         })
     }
 
-    fn write_hyperedge(buf: &mut Vec<u8>, edge: &Hyperedge) {
+    fn write_cistron(buf: &mut Vec<u8>, edge: &Cistron) {
         write_str(buf, edge.kind.as_str());
         write_u64(buf, edge.endpoints.len() as u64);
         for ep in &edge.endpoints {
@@ -459,8 +459,8 @@ mod durable {
         );
     }
 
-    fn read_hyperedge(r: &mut Reader<'_>) -> Result<Hyperedge> {
-        let kind = HyperedgeKind::new(r.str()?);
+    fn read_cistron(r: &mut Reader<'_>) -> Result<Cistron> {
+        let kind = CistronKind::new(r.str()?);
         let n = r.u64()? as usize;
         let mut endpoints = Vec::with_capacity(n);
         for _ in 0..n {
@@ -484,7 +484,7 @@ mod durable {
                 )));
             }
         };
-        Ok(Hyperedge {
+        Ok(Cistron {
             kind,
             endpoints,
             weight_milli,
@@ -615,15 +615,15 @@ mod durable {
 mod tests {
     use super::*;
     use crate::causality::{CausalEdgeKind, CausalStamp};
-    use crate::genesis::Hypergraph;
+    use crate::genesis::Grn;
     use crate::signal::SignalId;
 
     #[test]
-    fn memory_store_round_trips_empty_hypergraph() {
+    fn memory_store_round_trips_empty_grn() {
         let mut store = MemoryStore::new();
-        let hg = Hypergraph::new();
-        store.save_hypergraph(&hg).expect("save");
-        let loaded = store.load_hypergraph().expect("load");
+        let hg = Grn::new();
+        store.save_grn(&hg).expect("save");
+        let loaded = store.load_grn().expect("load");
         assert!(loaded.edges().next().is_none());
     }
 

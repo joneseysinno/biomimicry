@@ -9,9 +9,7 @@ pub use crate::cell::{BehavioralMode, Cell, CellId, LifecycleState};
 pub use crate::error::{BiomimicryError, Result};
 pub use crate::expression::{NetworkRegulator, RegulatoryRule, RuleNetwork};
 pub use crate::ganglion::{Ganglion, GanglionHandle, GanglionHealth, GanglionView};
-pub use crate::genesis::{
-    EndpointPolarity, Gene, GeneId, Genome, Hypergraph, Primitive, SpatialHypergraph,
-};
+pub use crate::genesis::{Cistron, EndpointPolarity, Gene, GeneId, Genome, Grn, Primitive};
 pub use crate::homeostasis::{
     AttractorStabilityLoop, DampingParams, HomeostaticLoop, PopulationSizeLoop, SignalFluxLoop,
 };

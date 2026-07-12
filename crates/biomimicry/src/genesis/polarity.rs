@@ -1,11 +1,11 @@
 //! Endpoint polarity (+/−) and pole semantics per primitive.
 //!
 //! Substrate Tail/Head/Neutral mapping is deferred to M7 — polarity here is the
-//! engine-facing +/− property on hyperedge endpoints.
+//! engine-facing +/− property on cistron endpoints.
 
 use super::Primitive;
 
-/// Polarity of a hyperedge endpoint.
+/// Polarity of a cistron endpoint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum EndpointPolarity {

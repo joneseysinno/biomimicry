@@ -36,8 +36,8 @@ pub fn aec_handles() -> AecHandles {
     let wall_move_path = genome
         .iter()
         .find(|g| {
-            g.hyperedge.kind.as_str() == "wall_move_path"
-                && g.hyperedge.endpoints.iter().any(|ep| {
+            g.cistron.kind.as_str() == "wall_move_path"
+                && g.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == Primitive::Receptor && ep.polarity == EndpointPolarity::Positive
                 })
         })
@@ -46,8 +46,8 @@ pub fn aec_handles() -> AecHandles {
     let effector = genome
         .iter()
         .find(|g| {
-            g.hyperedge.kind.as_str() == "aec_effector"
-                && g.hyperedge.endpoints.iter().any(|ep| {
+            g.cistron.kind.as_str() == "aec_effector"
+                && g.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == Primitive::Receptor && ep.polarity == EndpointPolarity::Positive
                 })
         })

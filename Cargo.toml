@@ -9,7 +9,7 @@ members = [
 default-members = ["crates/biomimicry"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -17,9 +17,9 @@ repository = "https://github.com/joneseysinno/biomimicry"
 authors = ["biomimicry contributors"]
 
 [workspace.dependencies]
-biomimicry = { path = "crates/biomimicry", version = "0.1.0" }
-biomimicry-substrate = { path = "crates/biomimicry-substrate", version = "0.1.0" }
-biomimicry-aec = { path = "crates/biomimicry-aec", version = "0.1.0" }
+biomimicry = { path = "crates/biomimicry", version = "0.2.0" }
+biomimicry-substrate = { path = "crates/biomimicry-substrate", version = "0.2.0" }
+biomimicry-aec = { path = "crates/biomimicry-aec", version = "0.2.0" }
 infinite-db = { version = "0.4.0", default-features = false, features = ["embedded"] }
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }

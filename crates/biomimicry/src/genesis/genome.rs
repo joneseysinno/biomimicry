@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use super::{EndpointPolarity, Gene, GeneId, GeneOrigin, Primitive, SpatialHypergraph};
+use super::{EndpointPolarity, Gene, GeneId, GeneOrigin, Grn, Primitive};
 
 /// Compiled genome: the catalog of expressible genes.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -61,14 +61,14 @@ impl Genome {
 
     /// Content id of `gene`'s complement (may equal `gene.id` if self-complementary).
     #[must_use]
-    pub fn complement_id(&self, gene: &Gene, graph: &SpatialHypergraph) -> GeneId {
-        let flipped = gene.hyperedge.complement();
+    pub fn complement_id(&self, gene: &Gene, graph: &Grn) -> GeneId {
+        let flipped = gene.cistron.complement();
         GeneId::of_in_graph(&flipped, graph)
     }
 
     /// The complement gene, if registered.
     #[must_use]
-    pub fn complement_of(&self, id: GeneId, graph: &SpatialHypergraph) -> Option<&Gene> {
+    pub fn complement_of(&self, id: GeneId, graph: &Grn) -> Option<&Gene> {
         let gene = self.get(id)?;
         let cid = self.complement_id(gene, graph);
         self.get(cid)
@@ -105,16 +105,16 @@ impl Genome {
     }
 
     /// Insert a gene and maintain indices. Duplicate id is a no-op (same gene).
-    pub(crate) fn insert(&mut self, gene: Gene, graph: &SpatialHypergraph) {
+    pub(crate) fn insert(&mut self, gene: Gene, graph: &Grn) {
         let id = gene.id;
         if self.genes.contains_key(&id) {
             return;
         }
         self.by_kind
-            .entry(gene.hyperedge.kind.0.clone())
+            .entry(gene.cistron.kind.0.clone())
             .or_default()
             .insert(id);
-        for ep in &gene.hyperedge.endpoints {
+        for ep in &gene.cistron.endpoints {
             if let Some(node) = graph.resolve(ep.node) {
                 self.by_participation
                     .entry((node.primitive, ep.polarity))

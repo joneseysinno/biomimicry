@@ -9,8 +9,8 @@ use proptest::prelude::*;
 use crate::error::BiomimicryError;
 use crate::genesis::fixture::{toy_dna, with_dangling};
 use crate::genesis::{
-    DimensionVector, EndpointPolarity, EndpointRef, GeneId, GeneOrigin, Hyperedge, Primitive,
-    PrimitiveNode, SpatialHypergraph, compile, endpoint, validate_hyperedge,
+    Cistron, DimensionVector, EndpointPolarity, EndpointRef, GeneId, GeneOrigin, Grn, Primitive,
+    PrimitiveNode, compile, endpoint, validate_cistron,
 };
 use crate::signal::Scope;
 
@@ -26,8 +26,8 @@ fn node_pool() -> Vec<PrimitiveNode> {
     ]
 }
 
-fn graph_with_pool() -> SpatialHypergraph {
-    let mut g = SpatialHypergraph::new();
+fn graph_with_pool() -> Grn {
+    let mut g = Grn::new();
     for n in node_pool() {
         g.add_node(n).unwrap();
     }
@@ -58,7 +58,7 @@ fn arb_endpoint() -> impl Strategy<Value = EndpointRef> {
         .prop_map(move |(i, polarity, role, scope)| endpoint(&pool[i], polarity, &role, scope))
 }
 
-fn arb_valid_hyperedge() -> impl Strategy<Value = Hyperedge> {
+fn arb_valid_cistron() -> impl Strategy<Value = Cistron> {
     (
         "[a-z][a-z0-9_]{0,12}",
         proptest::collection::vec(arb_endpoint(), 1..5),
@@ -75,16 +75,16 @@ fn arb_valid_hyperedge() -> impl Strategy<Value = Hyperedge> {
             if unique.is_empty() || kind.is_empty() {
                 None
             } else {
-                Some(Hyperedge::new(kind, unique))
+                Some(Cistron::new(kind, unique))
             }
         })
 }
 
-fn arb_self_complement_edge() -> impl Strategy<Value = Hyperedge> {
+fn arb_self_complement_edge() -> impl Strategy<Value = Cistron> {
     let pool = node_pool();
     (0..pool.len(), "[a-z]{1,3}").prop_map(move |(i, role)| {
         let node = &pool[i];
-        Hyperedge::new(
+        Cistron::new(
             format!("sc_{role}"),
             vec![
                 endpoint(node, EndpointPolarity::Positive, &role, None),
@@ -99,15 +99,15 @@ proptest! {
 
     /// P1 · traversal soundness+completeness
     #[test]
-    fn p1_traversal_registers_exactly_valid_hyperedges(
-        edges in proptest::collection::vec(arb_valid_hyperedge(), 0..6)
+    fn p1_traversal_registers_exactly_valid_cistrons(
+        edges in proptest::collection::vec(arb_valid_cistron(), 0..6)
     ) {
         let mut g = graph_with_pool();
         let mut expected = BTreeSet::new();
         for edge in &edges {
-            assert!(validate_hyperedge(edge, &g).is_ok());
+            assert!(validate_cistron(edge, &g).is_ok());
             expected.insert(GeneId::of_in_graph(edge, &g));
-            g.add_hyperedge(edge.clone());
+            g.add_cistron(edge.clone());
         }
         let genome = compile(&g).unwrap();
         let traversed = genome.traversed_ids();
@@ -116,7 +116,7 @@ proptest! {
 
     /// P2 · involution
     #[test]
-    fn p2_complement_involution(edge in arb_valid_hyperedge()) {
+    fn p2_complement_involution(edge in arb_valid_cistron()) {
         let g = graph_with_pool();
         let c = edge.complement();
         let cc = c.complement();
@@ -129,11 +129,11 @@ proptest! {
     /// P3 · closure
     #[test]
     fn p3_genome_closed_under_complement(
-        edges in proptest::collection::vec(arb_valid_hyperedge(), 1..5)
+        edges in proptest::collection::vec(arb_valid_cistron(), 1..5)
     ) {
         let mut g = graph_with_pool();
         for edge in edges {
-            g.add_hyperedge(edge);
+            g.add_cistron(edge);
         }
         let genome = compile(&g).unwrap();
         for gene in genome.iter() {
@@ -145,7 +145,7 @@ proptest! {
     /// P4 · id determinism / order-independence
     #[test]
     fn p4_declaration_order_independent(
-        edge in arb_valid_hyperedge(),
+        edge in arb_valid_cistron(),
         seed in any::<u64>()
     ) {
         let g = graph_with_pool();
@@ -165,9 +165,9 @@ proptest! {
         );
 
         let mut g1 = g.clone();
-        g1.add_hyperedge(edge);
+        g1.add_cistron(edge);
         let mut g2 = g;
-        g2.add_hyperedge(shuffled);
+        g2.add_cistron(shuffled);
         let a = compile(&g1).unwrap();
         let b = compile(&g2).unwrap();
         prop_assert_eq!(a.traversed_ids(), b.traversed_ids());
@@ -177,7 +177,7 @@ proptest! {
     #[test]
     fn p5_self_complement_registered_once(edge in arb_self_complement_edge()) {
         let mut g = graph_with_pool();
-        g.add_hyperedge(edge.clone());
+        g.add_cistron(edge.clone());
         let genome = compile(&g).unwrap();
         let id = GeneId::of_in_graph(&edge, &g);
         prop_assert!(genome.contains(id));
