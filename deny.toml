@@ -11,6 +11,11 @@ targets = [
 
 [advisories]
 yanked = "warn"
+ignore = [
+    # bincode 2.x is a transitive dependency of infinite-db 0.4.0.
+    # No newer version of infinite-db is available yet; ignore until upstream updates.
+    { id = "RUSTSEC-2025-0141", reason = "transitive dep via infinite-db 0.4.0; no fix available upstream" },
+]
 
 [licenses]
 version = 2
