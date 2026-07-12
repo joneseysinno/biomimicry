@@ -6,8 +6,7 @@ use std::sync::Arc;
 use crate::cell::CellId;
 use crate::expression::{NetworkRegulator, RegulatoryRule, RuleCondition, RuleNetwork};
 use crate::genesis::{
-    DimensionVector, EndpointPolarity, GeneId, Primitive, PrimitiveNode, SpatialHypergraph,
-    compile, endpoint,
+    DimensionVector, EndpointPolarity, GeneId, Grn, Primitive, PrimitiveNode, compile, endpoint,
 };
 use crate::membrane::BoundaryCellTemplate;
 use crate::metabolism::Cadence;
@@ -33,8 +32,8 @@ pub struct EchoHandles {
 
 /// DNA for the toy echo protocol (matched signaling only).
 #[must_use]
-pub fn echo_dna() -> SpatialHypergraph {
-    let mut g = SpatialHypergraph::new();
+pub fn echo_dna() -> Grn {
+    let mut g = Grn::new();
 
     let receptor = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0, 0]));
     let expr = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([2, 0]));
@@ -52,7 +51,7 @@ pub fn echo_dna() -> SpatialHypergraph {
         g.add_node(n).expect("add node");
     }
 
-    g.add_hyperedge(crate::genesis::Hyperedge::new(
+    g.add_cistron(crate::genesis::Cistron::new(
         "echo_path",
         vec![
             endpoint(&receptor, EndpointPolarity::Positive, "echo.request", None),
@@ -61,7 +60,7 @@ pub fn echo_dna() -> SpatialHypergraph {
         ],
     ));
 
-    g.add_hyperedge(crate::genesis::Hyperedge::new(
+    g.add_cistron(crate::genesis::Cistron::new(
         "echo_effector",
         vec![
             endpoint(&r2, EndpointPolarity::Positive, "gate", None),
@@ -80,8 +79,8 @@ pub fn echo_handles() -> EchoHandles {
     let echo_path = genome
         .iter()
         .find(|g| {
-            g.hyperedge.kind.as_str() == "echo_path"
-                && g.hyperedge.endpoints.iter().any(|ep| {
+            g.cistron.kind.as_str() == "echo_path"
+                && g.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == Primitive::Receptor && ep.polarity == EndpointPolarity::Positive
                 })
         })
@@ -90,8 +89,8 @@ pub fn echo_handles() -> EchoHandles {
     let effector = genome
         .iter()
         .find(|g| {
-            g.hyperedge.kind.as_str() == "echo_effector"
-                && g.hyperedge.endpoints.iter().any(|ep| {
+            g.cistron.kind.as_str() == "echo_effector"
+                && g.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == Primitive::Receptor && ep.polarity == EndpointPolarity::Positive
                 })
         })

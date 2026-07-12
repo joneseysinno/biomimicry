@@ -3,13 +3,13 @@
 //! All distances are integer millis. Semantic and functional modes are typed-
 //! unavailable stubs until signal samples / learned weights land.
 
-use super::{DimensionVector, Hyperedge, PrimitiveNode, SpatialHypergraph};
+use super::{Cistron, DimensionVector, Grn, PrimitiveNode};
 use crate::error::{BiomimicryError, Result};
 
 /// How relational distance is measured for scoping and diffusion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum DistanceMode {
-    /// Topology / coordinate metric over the DNA hypergraph (default).
+    /// Topology / coordinate metric over the DNA GRN (default).
     #[default]
     Structural,
     /// Semantic similarity of gene roles / payloads (unavailable in M1).
@@ -110,13 +110,13 @@ pub fn distance(a: &PrimitiveNode, b: &PrimitiveNode, mode: DistanceMode) -> Res
     }
 }
 
-/// Hyperedge **spread**: max pairwise structural distance among participating
+/// Cistron **spread**: max pairwise structural distance among participating
 /// nodes — how "effortful / specialized" the gene is.
 ///
 /// # Errors
 ///
 /// Returns an error if an endpoint's node cannot be resolved.
-pub fn spread(edge: &Hyperedge, graph: &SpatialHypergraph) -> Result<i32> {
+pub fn spread(edge: &Cistron, graph: &Grn) -> Result<i32> {
     let mut nodes: Vec<&PrimitiveNode> = Vec::with_capacity(edge.endpoints.len());
     for ep in &edge.endpoints {
         let node = graph
@@ -196,14 +196,14 @@ mod tests {
 
     #[test]
     fn spread_is_max_pairwise() {
-        let mut g = SpatialHypergraph::new();
+        let mut g = Grn::new();
         let n0 = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0]));
         let n1 = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([5]));
         let n2 = PrimitiveNode::new(Primitive::Signal, DimensionVector::new([10]));
         g.add_node(n0.clone()).unwrap();
         g.add_node(n1.clone()).unwrap();
         g.add_node(n2.clone()).unwrap();
-        let edge = Hyperedge::new(
+        let edge = Cistron::new(
             "t",
             vec![
                 endpoint(&n0, EndpointPolarity::Positive, "a", None),

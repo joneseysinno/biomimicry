@@ -36,7 +36,7 @@ fn p4_cascade_only_when_gene_active() {
     cell.try_transition(LifecycleState::Active).unwrap();
     let spike = genome
         .iter()
-        .find(|g| g.hyperedge.kind.as_str() == "sensory_spike")
+        .find(|g| g.cistron.kind.as_str() == "sensory_spike")
         .map(|g| g.id)
         .unwrap();
     cell.activate(spike);

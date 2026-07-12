@@ -1,6 +1,12 @@
-//! Hyperedge structure — the shape of a gene.
+//! Cistron — the unit of regulatory function (a "gene's shape").
 //!
-//! Identity of a gene is the hyperedge's canonical form (see [`crate::genesis::GeneId`]);
+//! A cistron binds a set of primitive participations (receptor / expression /
+//! signal / transduction, each at a polarity) into one self-contained
+//! regulatory behaviour. It is the engine's biological name for what the
+//! persistence layer stores as an infinite-db `Hyperedge`; the two never mix in
+//! engine code — translation happens once, in `biomimicry-substrate`.
+//!
+//! Identity is the cistron's canonical content hash ([`crate::genesis::GeneId`]);
 //! `weight_milli` / spread are annotations and never feed identity.
 
 use blake3::Hasher;
@@ -9,11 +15,11 @@ use super::hash::{finalize_u128, update_str, update_u32};
 use super::{EndpointPolarity, EndpointRef, Role};
 use crate::signal::Scope;
 
-/// Gene / hyperedge kind label (e.g. `"sensory_spike"`).
+/// Gene / cistron kind label (e.g. `"sensory_spike"`).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct HyperedgeKind(pub String);
+pub struct CistronKind(pub String);
 
-impl HyperedgeKind {
+impl CistronKind {
     /// Construct from any stringy value.
     #[must_use]
     pub fn new(kind: impl Into<String>) -> Self {
@@ -33,37 +39,37 @@ impl HyperedgeKind {
     }
 }
 
-impl From<&str> for HyperedgeKind {
+impl From<&str> for CistronKind {
     fn from(value: &str) -> Self {
         Self::new(value)
     }
 }
 
-impl From<String> for HyperedgeKind {
+impl From<String> for CistronKind {
     fn from(value: String) -> Self {
         Self::new(value)
     }
 }
 
-/// Whether a hyperedge is directed (genes default to directed).
+/// Whether a cistron is directed (genes default to directed).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Directionality {
-    /// Directed hyperedge (default for genes).
+    /// Directed cistron (default for genes).
     #[default]
     Directed = 0,
-    /// Undirected hyperedge.
+    /// Undirected cistron.
     Undirected = 1,
 }
 
-/// A hyperedge connecting multiple endpoints (a gene's topology).
+/// A cistron connecting multiple endpoints (a gene's topology).
 ///
 /// Declaration order in `endpoints` is preserved for display; identity uses
 /// [`Self::canonical_endpoints`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Hyperedge {
+pub struct Cistron {
     /// Kind label (must be non-empty to compile).
-    pub kind: HyperedgeKind,
+    pub kind: CistronKind,
     /// Endpoints in declaration order.
     pub endpoints: Vec<EndpointRef>,
     /// Optional functional weight in millis; seeded from spread when absent.
@@ -72,10 +78,10 @@ pub struct Hyperedge {
     pub directionality: Directionality,
 }
 
-impl Hyperedge {
-    /// Create a directed hyperedge with no weight yet.
+impl Cistron {
+    /// Create a directed cistron with no weight yet.
     #[must_use]
-    pub fn new(kind: impl Into<HyperedgeKind>, endpoints: Vec<EndpointRef>) -> Self {
+    pub fn new(kind: impl Into<CistronKind>, endpoints: Vec<EndpointRef>) -> Self {
         Self {
             kind: kind.into(),
             endpoints,
@@ -108,7 +114,7 @@ impl Hyperedge {
         eps
     }
 
-    /// Content-addressed identity of this hyperedge's canonical form.
+    /// Content-addressed identity of this cistron's canonical form.
     ///
     /// Hash domain: `(kind, directionality, sorted endpoints)` where each
     /// endpoint contributes `(PrimitiveNodeId, polarity, role, scope)`.
@@ -135,7 +141,7 @@ impl Hyperedge {
         finalize_u128(&hasher)
     }
 
-    /// Complement hyperedge: every endpoint polarity flipped.
+    /// Complement cistron: every endpoint polarity flipped.
     ///
     /// Kind, directionality, roles, scopes, and declaration-relative structure
     /// are preserved; weight is cleared (re-derived at compile from spread).
@@ -179,7 +185,7 @@ mod tests {
     #[test]
     fn complement_flips_all_polarities() {
         let n = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([1]));
-        let edge = Hyperedge::new(
+        let edge = Cistron::new(
             "pair",
             vec![
                 endpoint(&n, EndpointPolarity::Positive, "a", None),
@@ -195,14 +201,14 @@ mod tests {
     fn declaration_order_does_not_change_content_id() {
         let a = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0]));
         let b = PrimitiveNode::new(Primitive::Signal, DimensionVector::new([1]));
-        let e1 = Hyperedge::new(
+        let e1 = Cistron::new(
             "g",
             vec![
                 endpoint(&a, EndpointPolarity::Positive, "r", None),
                 endpoint(&b, EndpointPolarity::Positive, "s", Some(Scope::Systemwide)),
             ],
         );
-        let e2 = Hyperedge::new(
+        let e2 = Cistron::new(
             "g",
             vec![
                 endpoint(&b, EndpointPolarity::Positive, "s", Some(Scope::Systemwide)),

@@ -1,10 +1,12 @@
 # biomimicry
 
-Biological computing engine: **computation as settling** in a living hypergraph.
+Biological computing engine: **computation as settling** in a living gene regulatory network (GRN).
 
 There is no `main()` and no orchestrator. You build an `Organism`, `perturb` (or `ingress`) it, and let it `settle`.
 
-> Status: **M10 / gardenable 0.1.0** — documented, tested, and benchmarked. Iterate on rulesets by observing where they settle. Research seams (Hilbert, infinite-db Spaces, provenance learning) remain post-0.1.
+Engine DNA types speak biology (`Cistron`, `Grn`); infinite-db's `Hyperedge` / `Space` names are translated only in `biomimicry-substrate`.
+
+> Status: **M10 / gardenable** — API **0.2.0** (`Cistron`/`Grn` rename). Iterate on rulesets by observing where they settle. Research seams (Hilbert, infinite-db Spaces, provenance learning) remain post-0.1.
 
 ## Workspace
 
@@ -71,10 +73,6 @@ infinite-db = []    # marker — real backend in biomimicry-substrate
 determinism = []
 inspector = []
 ```
-
-## Plans & design
-
-Milestone JIT plans and the scaffolding index live under [`plans/`](./plans/). Design source: [`plans/biological_computing_engine_design.md`](./plans/biological_computing_engine_design.md). Scaffolding map: [`plans/biomimicry_scaffolding_plan.md`](./plans/biomimicry_scaffolding_plan.md).
 
 ## License
 

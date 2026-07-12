@@ -1,32 +1,32 @@
-//! Spatial hypergraph container — the in-engine DNA substrate view.
+//! Grn — the Gene Regulatory Network: the complete graph of regulatory
+//! interactions from which the genome is compiled by traversal.
 //!
-//! Persistence is behind [`crate::substrate::Store`]. [`SpatialHypergraph::load`]
-//! / [`SpatialHypergraph::persist`] exercise the hypergraph-facing Store methods
-//! so `infinite-db` is a drop-in at M7.
+//! Nodes are primitives (content-addressed [`PrimitiveNodeId`]); edges are
+//! [`Cistron`]s. "Spatial" lives here as a property, not a name: primitive
+//! proximity (an infinite-db curve index, wired at M7) makes nearby
+//! combinations cheap and distant ones rare. Persistence is behind
+//! [`crate::substrate::Store`]; `infinite-db` is a drop-in backend.
 
 use std::collections::BTreeMap;
 
-use super::{Hyperedge, PrimitiveNode, PrimitiveNodeId};
+use super::{Cistron, PrimitiveNode, PrimitiveNodeId};
 use crate::error::{BiomimicryError, Result};
 use crate::substrate::Store;
 
-/// In-engine spatial hypergraph (DNA substrate view).
+/// In-engine gene regulatory network (DNA substrate view).
 ///
 /// Nodes are keyed by content-addressed [`PrimitiveNodeId`]. Insertion order of
-/// hyperedges does not affect gene identity (ids are content hashes).
+/// cistrons does not affect gene identity (ids are content hashes).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct SpatialHypergraph {
+pub struct Grn {
     nodes: BTreeMap<PrimitiveNodeId, PrimitiveNode>,
-    hyperedges: Vec<Hyperedge>,
+    cistrons: Vec<Cistron>,
     /// Reserved for M7 Hilbert / spatial index — unused in M1 (results unchanged).
     structural_index: (),
 }
 
-/// Alias preserved for the Store boundary and prelude.
-pub type Hypergraph = SpatialHypergraph;
-
-impl SpatialHypergraph {
-    /// Create an empty hypergraph.
+impl Grn {
+    /// Create an empty GRN.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -55,9 +55,9 @@ impl SpatialHypergraph {
         Ok(())
     }
 
-    /// Append a hyperedge (not yet validated — validation is compile's job).
-    pub fn add_hyperedge(&mut self, edge: Hyperedge) {
-        self.hyperedges.push(edge);
+    /// Append a cistron (not yet validated — validation is compile's job).
+    pub fn add_cistron(&mut self, edge: Cistron) {
+        self.cistrons.push(edge);
     }
 
     /// Resolve a node id to its payload.
@@ -77,20 +77,20 @@ impl SpatialHypergraph {
         self.nodes.len()
     }
 
-    /// Traverse all hyperedges (declaration / insertion order).
-    pub fn iter_hyperedges(&self) -> impl Iterator<Item = &Hyperedge> {
-        self.hyperedges.iter()
+    /// Traverse all cistrons (declaration / insertion order).
+    pub fn iter_cistrons(&self) -> impl Iterator<Item = &Cistron> {
+        self.cistrons.iter()
     }
 
     /// Alias used by older Store call sites.
-    pub fn edges(&self) -> impl Iterator<Item = &Hyperedge> {
-        self.iter_hyperedges()
+    pub fn edges(&self) -> impl Iterator<Item = &Cistron> {
+        self.iter_cistrons()
     }
 
-    /// Number of hyperedges.
+    /// Number of cistrons.
     #[must_use]
-    pub fn hyperedge_count(&self) -> usize {
-        self.hyperedges.len()
+    pub fn cistron_count(&self) -> usize {
+        self.cistrons.len()
     }
 
     /// Look up the primitive type id for a node (for canonical hashing).
@@ -99,23 +99,23 @@ impl SpatialHypergraph {
         self.nodes.get(&id).map(|n| n.primitive.type_id())
     }
 
-    /// Persist this hypergraph through the Store's fine-grained hypergraph API.
+    /// Persist this grn through the Store's fine-grained grn API.
     ///
     /// # Errors
     ///
     /// Propagates Store I/O errors.
     pub fn persist(&self, store: &mut dyn Store) -> Result<()> {
-        store.clear_hypergraph()?;
+        store.clear_grn()?;
         for node in self.nodes.values() {
             store.put_node(node)?;
         }
-        for edge in &self.hyperedges {
-            store.put_hyperedge(edge)?;
+        for edge in &self.cistrons {
+            store.put_cistron(edge)?;
         }
         Ok(())
     }
 
-    /// Load a hypergraph from a Store.
+    /// Load a grn from a Store.
     ///
     /// # Errors
     ///
@@ -125,22 +125,22 @@ impl SpatialHypergraph {
         for node in store.iter_nodes()? {
             graph.add_node(node)?;
         }
-        for edge in store.iter_hyperedges()? {
-            graph.add_hyperedge(edge);
+        for edge in store.iter_cistrons()? {
+            graph.add_cistron(edge);
         }
         Ok(graph)
     }
 }
 
-/// Validate a hyperedge against §2.4 structural rules given a node table.
+/// Validate a cistron against §2.4 structural rules given a node table.
 ///
 /// # Errors
 ///
 /// Returns typed genesis errors for empty endpoints, empty kind, dangling
 /// refs, or duplicate endpoint tuples.
-pub fn validate_hyperedge(edge: &Hyperedge, graph: &SpatialHypergraph) -> Result<()> {
+pub fn validate_cistron(edge: &Cistron, graph: &Grn) -> Result<()> {
     if edge.endpoints.is_empty() {
-        return Err(BiomimicryError::MalformedHyperedge {
+        return Err(BiomimicryError::MalformedCistron {
             reason: "endpoints must be non-empty".into(),
         });
     }
@@ -172,10 +172,10 @@ mod tests {
 
     #[test]
     fn store_round_trip_preserves_graph() {
-        let mut g = SpatialHypergraph::new();
+        let mut g = Grn::new();
         let n = PrimitiveNode::new(Primitive::Signal, DimensionVector::new([1, 2]));
         g.add_node(n.clone()).unwrap();
-        g.add_hyperedge(Hyperedge::new(
+        g.add_cistron(Cistron::new(
             "spike",
             vec![endpoint(
                 &n,
@@ -186,7 +186,7 @@ mod tests {
         ));
         let mut store = MemoryStore::new();
         g.persist(&mut store).unwrap();
-        let loaded = SpatialHypergraph::load(&store).unwrap();
+        let loaded = Grn::load(&store).unwrap();
         assert_eq!(loaded, g);
     }
 }

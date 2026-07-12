@@ -1,15 +1,21 @@
 //! Durable [`biomimicry::substrate::Store`] backed by an on-disk MemoryStore blob.
 //!
+//! This crate is the one place two vocabularies meet: the engine's biological
+//! `genesis::Cistron` / `Grn` on one side, infinite-db's graph-theoretic
+//! `Hyperedge` / `Space` on the other. All mapping between them lives here so
+//! engine code never imports a database type, and database code never learns
+//! biology. (Current impl delegates to a MemoryStore blob; the Cistron⇄Hyperedge
+//! Space mapping is the next hardening step.)
+//!
 //! M7 locks a pragmatic contract: an inner [`MemoryStore`] plus a rewrite-on-mutate
-//! file at `path`. Semantic mapping onto infinite-db Spaces / `caused_by:*` is the
-//! next hardening step; this crate proves the Store contract and replay/branch
+//! file at `path`. This crate proves the Store contract and replay/branch
 //! deliverable.
 
 use std::path::{Path, PathBuf};
 
 use biomimicry::causality::{CausalDag, CausalEventLog, CausalNode};
 use biomimicry::error::{BiomimicryError, Result};
-use biomimicry::genesis::{Hyperedge, PrimitiveNode, PrimitiveNodeId};
+use biomimicry::genesis::{Cistron, PrimitiveNode, PrimitiveNodeId};
 use biomimicry::substrate::{BranchId, MemoryStore, SnapshotId, SnapshotMeta, Store};
 
 /// Store that delegates to [`MemoryStore`] and rewrites a durable file after
@@ -68,8 +74,8 @@ impl InfiniteDbStore {
 }
 
 impl Store for InfiniteDbStore {
-    fn clear_hypergraph(&mut self) -> Result<()> {
-        self.inner.clear_hypergraph()?;
+    fn clear_grn(&mut self) -> Result<()> {
+        self.inner.clear_grn()?;
         self.persist()
     }
 
@@ -86,13 +92,13 @@ impl Store for InfiniteDbStore {
         self.inner.iter_nodes()
     }
 
-    fn put_hyperedge(&mut self, edge: &Hyperedge) -> Result<()> {
-        self.inner.put_hyperedge(edge)?;
+    fn put_cistron(&mut self, edge: &Cistron) -> Result<()> {
+        self.inner.put_cistron(edge)?;
         self.persist()
     }
 
-    fn iter_hyperedges(&self) -> Result<Vec<Hyperedge>> {
-        self.inner.iter_hyperedges()
+    fn iter_cistrons(&self) -> Result<Vec<Cistron>> {
+        self.inner.iter_cistrons()
     }
 
     fn append_causal(&mut self, node: CausalNode) -> Result<()> {

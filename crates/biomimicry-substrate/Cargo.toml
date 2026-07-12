@@ -14,7 +14,7 @@ default = ["infinite-db"]
 infinite-db = ["dep:infinite-db"]
 
 [dependencies]
-biomimicry = { path = "../biomimicry", version = "0.1.0", default-features = false, features = ["memory-store"] }
+biomimicry = { path = "../biomimicry", version = "0.2.0", default-features = false, features = ["memory-store"] }
 infinite-db = { workspace = true, optional = true }
 thiserror = { workspace = true }
 

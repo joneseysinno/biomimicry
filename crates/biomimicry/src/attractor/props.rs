@@ -34,7 +34,7 @@ fn fingerprint_stable_for_same_expression() {
     b.try_transition(LifecycleState::Active).unwrap();
     let spike = genome
         .iter()
-        .find(|g| g.hyperedge.kind.as_str() == "sensory_spike")
+        .find(|g| g.cistron.kind.as_str() == "sensory_spike")
         .map(|g| g.id)
         .unwrap();
     a.activate(spike);

@@ -30,8 +30,8 @@ pub fn m4_handles() -> M4Handles {
     let cascade_path = genome
         .iter()
         .find(|g| {
-            g.hyperedge.kind.as_str() == "cascade_path"
-                && g.hyperedge.endpoints.iter().any(|ep| {
+            g.cistron.kind.as_str() == "cascade_path"
+                && g.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == crate::genesis::Primitive::Receptor
                         && ep.polarity == crate::genesis::EndpointPolarity::Positive
                 })
@@ -41,8 +41,8 @@ pub fn m4_handles() -> M4Handles {
     let effector = genome
         .iter()
         .find(|g| {
-            g.hyperedge.kind.as_str() == "effector"
-                && g.hyperedge.endpoints.iter().any(|ep| {
+            g.cistron.kind.as_str() == "effector"
+                && g.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == crate::genesis::Primitive::Receptor
                         && ep.polarity == crate::genesis::EndpointPolarity::Positive
                 })

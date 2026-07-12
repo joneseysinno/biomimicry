@@ -1,9 +1,9 @@
-//! The four DNA primitives that compose every gene hyperedge.
+//! The four DNA primitives that compose every gene cistron.
 //!
 //! Stable `type_id` values `0..=3` match the infinite-db `Space("primitives")`
 //! node ids and must not be renumbered — content hashes depend on them.
 
-/// One of the four primitives that appear as poles of a gene hyperedge.
+/// One of the four primitives that appear as poles of a gene cistron.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Primitive {

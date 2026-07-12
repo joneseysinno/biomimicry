@@ -21,7 +21,7 @@ pub struct SurfaceEndpoint {
 }
 
 impl SurfaceEndpoint {
-    /// From a hyperedge endpoint + owning gene.
+    /// From a cistron endpoint + owning gene.
     #[must_use]
     pub fn from_endpoint(gene: GeneId, ep: &EndpointRef) -> Self {
         Self {
@@ -55,7 +55,7 @@ impl SignalingProfile {
             let Some(gene) = genome.get(id) else {
                 continue;
             };
-            for ep in &gene.hyperedge.endpoints {
+            for ep in &gene.cistron.endpoints {
                 match (ep.primitive, ep.polarity) {
                     (Primitive::Receptor, EndpointPolarity::Positive) => {
                         receptor_surface.push(SurfaceEndpoint::from_endpoint(id, ep));
@@ -157,9 +157,9 @@ impl ExpressionState {
         let removed = self.active.remove(&gene);
         let mut added = false;
         if let Some(g) = self.genome.get(gene) {
-            // Need hypergraph for complement_id — Genome::complement_id requires graph.
-            // Use Gene::is path: flip hyperedge and hash.
-            let flipped = g.hyperedge.complement();
+            // Need grn for complement_id — Genome::complement_id requires graph.
+            // Use Gene::is path: flip cistron and hash.
+            let flipped = g.cistron.complement();
             let cid = GeneId::of(&flipped);
             if self.genome.contains(cid) {
                 added = self.active.insert(cid);
@@ -253,7 +253,7 @@ pub fn operations_for_matched_gene(
     let mut saw_trans_pos = false;
     let mut emit_ep: Option<&EndpointRef> = None;
 
-    for ep in &gene.hyperedge.endpoints {
+    for ep in &gene.cistron.endpoints {
         match (ep.primitive, ep.polarity) {
             (Primitive::Expression, EndpointPolarity::Positive) => saw_expr_pos = true,
             (Primitive::Transduction, EndpointPolarity::Positive) => saw_trans_pos = true,

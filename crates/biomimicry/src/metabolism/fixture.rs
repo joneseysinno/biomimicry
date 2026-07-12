@@ -16,8 +16,8 @@ pub fn sensory_population() -> (Population, Arc<crate::genesis::Genome>, GeneId)
     let spike = genome
         .iter()
         .find(|g| {
-            g.hyperedge.kind.as_str() == "sensory_spike"
-                && g.hyperedge.endpoints.iter().any(|ep| {
+            g.cistron.kind.as_str() == "sensory_spike"
+                && g.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == crate::genesis::Primitive::Receptor
                         && ep.polarity == crate::genesis::EndpointPolarity::Positive
                 })

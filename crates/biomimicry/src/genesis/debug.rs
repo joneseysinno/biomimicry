@@ -1,13 +1,13 @@
-//! Graphviz dump for hypergraph + genome (inspector seed).
+//! Graphviz dump for grn + genome (inspector seed).
 
 use std::fmt::Write as _;
 
-use super::{GeneOrigin, Genome, SpatialHypergraph};
+use super::{GeneOrigin, Genome, Grn};
 
-/// Render a Graphviz DOT digraph of primitive nodes, hyperedges, and complement
+/// Render a Graphviz DOT digraph of primitive nodes, cistrons, and complement
 /// links (dashed). ~inspector ergonomics pulled forward from later milestones.
 #[must_use]
-pub fn to_dot(graph: &SpatialHypergraph, genome: &Genome) -> String {
+pub fn to_dot(graph: &Grn, genome: &Genome) -> String {
     let mut out = String::from("digraph genesis {\n");
     out.push_str("  graph [rankdir=LR];\n");
     out.push_str("  node [shape=box];\n");
@@ -21,7 +21,7 @@ pub fn to_dot(graph: &SpatialHypergraph, genome: &Genome) -> String {
         );
     }
 
-    for (i, edge) in graph.iter_hyperedges().enumerate() {
+    for (i, edge) in graph.iter_cistrons().enumerate() {
         let ename = format!("e{i}_{}", edge.kind.as_str());
         let _ = writeln!(
             out,

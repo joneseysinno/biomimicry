@@ -11,8 +11,7 @@ use crate::cell::fixture::{active_sensory_cell, sensory_genome, trigger_signal};
 use crate::cell::lifecycle::{LifecycleState, all_states, is_legal};
 use crate::cell::{Cell, CellId};
 use crate::genesis::{
-    DimensionVector, EndpointPolarity, Hyperedge, Primitive, PrimitiveNode, SpatialHypergraph,
-    compile, endpoint,
+    Cistron, DimensionVector, EndpointPolarity, Grn, Primitive, PrimitiveNode, compile, endpoint,
 };
 use crate::signal::{CausalStamp, Payload, Scope, Signal, SignalType};
 
@@ -172,21 +171,21 @@ proptest! {
 /// P3 · veto: active Receptor− clears a previously matching enqueue.
 #[test]
 fn p3_veto_removes_match() {
-    let mut g = SpatialHypergraph::new();
+    let mut g = Grn::new();
     let r_pos = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0]));
     let r_neg = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([1]));
     let expr = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([2]));
     g.add_node(r_pos.clone()).unwrap();
     g.add_node(r_neg.clone()).unwrap();
     g.add_node(expr.clone()).unwrap();
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "listen",
         vec![
             endpoint(&r_pos, EndpointPolarity::Positive, "ping", None),
             endpoint(&expr, EndpointPolarity::Positive, "go", None),
         ],
     ));
-    g.add_hyperedge(Hyperedge::new(
+    g.add_cistron(Cistron::new(
         "block",
         vec![endpoint(&r_neg, EndpointPolarity::Negative, "ping", None)],
     ));
@@ -194,8 +193,8 @@ fn p3_veto_removes_match() {
     let listen = genome
         .iter()
         .find(|gene| {
-            gene.hyperedge.kind.as_str() == "listen"
-                && gene.hyperedge.endpoints.iter().any(|ep| {
+            gene.cistron.kind.as_str() == "listen"
+                && gene.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == Primitive::Receptor && ep.polarity == EndpointPolarity::Positive
                 })
         })
@@ -204,8 +203,8 @@ fn p3_veto_removes_match() {
     let block = genome
         .iter()
         .find(|gene| {
-            gene.hyperedge.kind.as_str() == "block"
-                && gene.hyperedge.endpoints.iter().any(|ep| {
+            gene.cistron.kind.as_str() == "block"
+                && gene.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == Primitive::Receptor && ep.polarity == EndpointPolarity::Negative
                 })
         })

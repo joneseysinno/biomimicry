@@ -1,16 +1,21 @@
 //! # biomimicry
 //!
-//! Biological computing engine: computation as *settling* in a living hypergraph.
+//! Biological computing engine: computation as *settling* in a living gene
+//! regulatory network (GRN).
 //!
 //! There is no `main()` and no orchestrator — you build an [`organism::Organism`]
 //! and [`organism::Organism::perturb`] it, then wait for it to
 //! [`organism::Organism::settle`].
 //!
+//! Engine DNA types use biological names ([`genesis::Cistron`], [`genesis::Grn`]);
+//! infinite-db's `Hyperedge` / `Space` vocabulary is translated only in
+//! `biomimicry-substrate`.
+//!
 //! ## Module map
 //!
 //! | Module | Role |
 //! |--------|------|
-//! | [`genesis`] | DNA — spatial hypergraph + genome |
+//! | [`genesis`] | DNA — gene regulatory network (GRN) + genome |
 //! | [`cell`] | Relational automaton |
 //! | [`ganglion`] | Bounded cell population |
 //! | [`signal`] | Regulatory / operational signals |
@@ -60,7 +65,7 @@ mod smoke {
     #[test]
     fn scaffold_memory_store_constructs() {
         let store = MemoryStore::new();
-        let hg = store.load_hypergraph().expect("load");
+        let hg = store.load_grn().expect("load");
         assert!(hg.edges().next().is_none());
     }
 }

@@ -57,7 +57,7 @@ fn apply_delta_mutates_expression() {
     let mut cell = Cell::new(CellId(1), Arc::clone(&genome));
     let spike = genome
         .iter()
-        .find(|g| g.hyperedge.kind.as_str() == "sensory_spike")
+        .find(|g| g.cistron.kind.as_str() == "sensory_spike")
         .map(|g| g.id)
         .unwrap();
     apply_delta(
