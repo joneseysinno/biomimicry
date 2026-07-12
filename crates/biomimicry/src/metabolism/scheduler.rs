@@ -4,18 +4,27 @@
 //! feature (default), the loop is purely queue-driven — no wall-clock trigger
 //! on the replay path. "Drained" means both scheduler queues are empty (not
 //! attractor convergence — that is M5).
+//!
+//! `Transduce` ops harvested mid-cycle are **held** until after the next Phase 1
+//! drain so expression changes land before cascades (M4 causal chain).
 
 use crate::causality::{CausalEvent, CausalEventLog, Prng};
-use crate::cell::{Cell, CellId, LifecycleState, Operation};
+use crate::cell::{BehavioralMode, Cell, CellId, LifecycleState, Operation};
 use crate::error::{BiomimicryError, Result};
+use crate::expression::NetworkRegulator;
+use crate::ganglion::Ganglion;
+use crate::genesis::GeneId;
 use crate::medium::{Medium, ScheduledOp};
 use crate::metabolism::budget::OrganismEnergy;
 use crate::metabolism::cadence::Cadence;
 use crate::metabolism::phase1_queue::Phase1Queue;
 use crate::metabolism::phase2_queue::Phase2Queue;
 use crate::metabolism::population::Population;
-use crate::metabolism::reactor::{EchoTransducer, ExplicitRegulator, Regulator, Transducer};
+use crate::metabolism::reactor::{Phase1Brain, Phase2Brain, Regulator, Transducer};
+use crate::sensorium::{ReadoutCollector, SignalSample};
 use crate::signal::{Payload, Phase, Scope, Signal, SignalType};
+use crate::transduction::CascadeTransducer;
+use std::sync::Arc;
 
 /// Two-phase nested-loop scheduler.
 #[derive(Debug)]
@@ -36,14 +45,28 @@ pub struct Scheduler {
     pub medium: Medium,
     /// Ordered causal event log (replay artifact).
     pub log: CausalEventLog,
-    /// M3 Phase 1 stand-in.
-    regulator: ExplicitRegulator,
-    /// M3 Phase 2 stand-in.
-    transducer: EchoTransducer,
+    /// Phase 1 brain (default: Explicit).
+    regulator: Phase1Brain,
+    /// Phase 2 brain (default: Echo).
+    transducer: Phase2Brain,
+    /// `Transduce` ops waiting for a Phase 1 boundary before becoming runnable.
+    held_transduce: Vec<ScheduledOp>,
     /// Outer cycles completed.
     pub outer_cycles: u32,
     /// Inner cycles completed.
     pub inner_cycles: u32,
+    /// When true, `Divide*` spawns daughters (M6); otherwise typed-unavailable.
+    pub divide_enabled: bool,
+    /// Next cell id for mitotic daughters.
+    pub next_daughter_id: u64,
+    /// Gene activated on daughters (optional).
+    pub seed_gene: Option<GeneId>,
+    /// Parent→daughter pairs from the last divide batch (organism applies to ganglia).
+    pending_lineage: Vec<(CellId, CellId)>,
+    /// Ganglia snapshot for Cluster delivery (set by organism each tick).
+    pub delivery_ganglia: Vec<Ganglion>,
+    /// Passive observation buffer filled during deliver.
+    pending_observations: Vec<SignalSample>,
 }
 
 impl Scheduler {
@@ -63,10 +86,17 @@ impl Scheduler {
             prng: Prng::new(seed),
             medium: Medium::new(),
             log: CausalEventLog::new(),
-            regulator: ExplicitRegulator,
-            transducer: EchoTransducer::default(),
+            regulator: Phase1Brain::default(),
+            transducer: Phase2Brain::default(),
+            held_transduce: Vec::new(),
             outer_cycles: 0,
             inner_cycles: 0,
+            divide_enabled: false,
+            next_daughter_id: 1,
+            seed_gene: None,
+            pending_lineage: Vec::new(),
+            delivery_ganglia: Vec::new(),
+            pending_observations: Vec::new(),
         })
     }
 
@@ -76,22 +106,59 @@ impl Scheduler {
         Self::try_new(seed, cadence).expect("cadence.k must be ≥ 1")
     }
 
-    /// Whether both scheduler queues are empty (**drained**, not converged).
-    #[must_use]
-    pub fn is_drained(&self) -> bool {
-        self.phase1.is_empty() && self.phase2.is_empty()
+    /// Install a Phase 1 rule-network brain.
+    pub fn with_regulator(&mut self, regulator: NetworkRegulator) -> &mut Self {
+        self.regulator = Phase1Brain::Network(regulator);
+        self
     }
 
-    /// Replace the echo follow-on kind.
+    /// Install a Phase 2 cascade brain.
+    pub fn with_transducer(&mut self, transducer: CascadeTransducer) -> &mut Self {
+        self.transducer = Phase2Brain::Cascade(transducer);
+        self
+    }
+
+    /// Whether both scheduler queues (and held transduction) are empty.
+    #[must_use]
+    pub fn is_drained(&self) -> bool {
+        self.phase1.is_empty() && self.phase2.is_empty() && self.held_transduce.is_empty()
+    }
+
+    /// Enable mitotic divide execution (M6).
+    pub fn enable_divide(&mut self, next_id: u64, seed_gene: Option<GeneId>) {
+        self.divide_enabled = true;
+        self.next_daughter_id = next_id;
+        self.seed_gene = seed_gene;
+    }
+
+    /// Take parent→daughter pairs produced by divide ops.
+    pub fn take_lineage(&mut self) -> Vec<(CellId, CellId)> {
+        std::mem::take(&mut self.pending_lineage)
+    }
+
+    /// Take observation samples buffered during delivery.
+    pub fn take_observations(&mut self) -> Vec<SignalSample> {
+        std::mem::take(&mut self.pending_observations)
+    }
+
+    /// Replace the echo follow-on kind (no-op if cascade brain is installed).
     pub fn set_echo_kind(&mut self, kind: impl Into<crate::signal::SignalKind>) {
-        self.transducer.follow_kind = kind.into();
+        if let Phase2Brain::Echo(echo) = &mut self.transducer {
+            echo.follow_kind = kind.into();
+        }
     }
 
     /// Inject a scheduled op directly (perturbation helper).
     pub fn inject(&mut self, op: ScheduledOp) {
         match op.op.phase() {
             Phase::Phase1 => self.phase1.push(op),
-            Phase::Phase2 => self.phase2.push(op),
+            Phase::Phase2 => {
+                if matches!(op.op, Operation::Transduce(_)) {
+                    self.held_transduce.push(op);
+                } else {
+                    self.phase2.push(op);
+                }
+            }
         }
     }
 
@@ -133,6 +200,9 @@ impl Scheduler {
 
         // Drain Phase 1 (expression apply via Regulator).
         self.drain_phase1(population)?;
+
+        // Release held transduction only after expression has been applied.
+        self.release_held_transduce();
 
         // Freeze expression for the whole inner loop — only P2 mutates queues.
         for _ in 0..self.cadence.k {
@@ -186,11 +256,19 @@ impl Scheduler {
         };
         while let Some(op) = cell.pending.pop() {
             let scheduled = ScheduledOp { cell: id, op };
-            match scheduled.op.phase() {
-                Phase::Phase1 => self.phase1.push(scheduled),
-                Phase::Phase2 => self.phase2.push(scheduled),
+            match &scheduled.op {
+                Operation::Transduce(_) => self.held_transduce.push(scheduled),
+                _ => match scheduled.op.phase() {
+                    Phase::Phase1 => self.phase1.push(scheduled),
+                    Phase::Phase2 => self.phase2.push(scheduled),
+                },
             }
         }
+    }
+
+    fn release_held_transduce(&mut self) {
+        let held = std::mem::take(&mut self.held_transduce);
+        self.phase2.extend(held);
     }
 
     fn drain_phase1(&mut self, population: &mut Population) -> Result<()> {
@@ -232,11 +310,11 @@ impl Scheduler {
                     let _ = cell.try_transition(LifecycleState::Differentiating);
                     self.log_tag(scheduled.cell, "differentiate");
                 }
-                Operation::DivideFast | Operation::DivideSlow => {
-                    return Err(BiomimicryError::OperationUnavailable {
-                        op: scheduled.op.op_name(),
-                        since_milestone: 6,
-                    });
+                Operation::DivideFast => {
+                    self.execute_divide(population, scheduled.cell, false)?;
+                }
+                Operation::DivideSlow => {
+                    self.execute_divide(population, scheduled.cell, true)?;
                 }
                 // Receive is Phase2; ignore if mis-routed.
                 other => {
@@ -267,18 +345,27 @@ impl Scheduler {
             match scheduled.op {
                 Operation::Emit(signal) => {
                     let source_id = scheduled.cell;
-                    let delivers = {
-                        let source = population.get(source_id).expect("source");
-                        self.medium
-                            .deliver(source, population.cells(), &signal, &mut self.log)?
-                    };
                     self.log.push(CausalEvent {
                         parent: None,
                         child: signal.id,
                         cell: source_id,
                         stamp: signal.stamp,
-                        tag: "emit",
+                        tag: "emit".into(),
                     });
+                    let delivers = {
+                        let source = population.get(source_id).expect("source");
+                        let mut collector = ReadoutCollector::new();
+                        let ops = self.medium.deliver(
+                            source,
+                            population.cells(),
+                            &signal,
+                            &mut self.log,
+                            &self.delivery_ganglia,
+                            Some(&mut collector),
+                        )?;
+                        self.pending_observations.extend(collector.drain());
+                        ops
+                    };
                     self.phase2.extend(delivers);
                 }
                 Operation::Receive(signal) => {
@@ -289,12 +376,12 @@ impl Scheduler {
                             child: signal.id,
                             cell: scheduled.cell,
                             stamp: signal.stamp,
-                            tag: "receive",
+                            tag: "receive".into(),
                         });
                         self.absorb_cell(population, scheduled.cell);
                     }
                 }
-                Operation::Transduce(_gene) => {
+                Operation::Transduce(gene) => {
                     let cell_id = scheduled.cell;
                     let (ops, stamp) = {
                         let cell = population.get_mut(cell_id).expect("cell");
@@ -313,7 +400,7 @@ impl Scheduler {
                             cell_id,
                             stamp,
                         );
-                        let ops = self.transducer.transduce(cell, &ctx);
+                        let ops = self.transducer.transduce(cell, &ctx, gene);
                         (ops, stamp)
                     };
                     self.log.push(CausalEvent {
@@ -321,7 +408,7 @@ impl Scheduler {
                         child: crate::signal::SignalId(stamp.0.unsigned_abs().into()),
                         cell: cell_id,
                         stamp,
-                        tag: "transduce",
+                        tag: "transduce".into(),
                     });
                     for op in ops {
                         self.phase2.push(ScheduledOp { cell: cell_id, op });
@@ -356,10 +443,14 @@ impl Scheduler {
         };
         let notifies = {
             let source = population.get(id).expect("dying");
-            match self
-                .medium
-                .deliver(source, population.cells(), &death, &mut self.log)
-            {
+            match self.medium.deliver(
+                source,
+                population.cells(),
+                &death,
+                &mut self.log,
+                &self.delivery_ganglia,
+                None,
+            ) {
                 Ok(ops) => ops,
                 Err(BiomimicryError::ScopeUnavailable { .. }) => Vec::new(),
                 Err(e) => return Err(e),
@@ -378,8 +469,54 @@ impl Scheduler {
         }
         self.phase1.purge_cell(id);
         self.phase2.purge_cell(id);
+        self.held_transduce.retain(|op| op.cell != id);
         self.medium.drop_in_flight(id);
         self.log_tag(id, "die");
+        Ok(())
+    }
+
+    fn execute_divide(
+        &mut self,
+        population: &mut Population,
+        parent_id: CellId,
+        slow: bool,
+    ) -> Result<()> {
+        if !self.divide_enabled {
+            return Err(BiomimicryError::OperationUnavailable {
+                op: if slow { "divide-slow" } else { "divide-fast" },
+                since_milestone: 6,
+            });
+        }
+        let (genome, genes) = {
+            let parent = population
+                .get(parent_id)
+                .ok_or_else(|| BiomimicryError::Metabolism("divide: missing parent".into()))?;
+            if parent.lifecycle() == LifecycleState::Dead {
+                return Ok(());
+            }
+            let genes: Vec<GeneId> = parent.expression.active_genes().collect();
+            (Arc::clone(&parent.genome), genes)
+        };
+        if slow {
+            if let Some(parent) = population.get_mut(parent_id) {
+                parent.mode = BehavioralMode::DividingSlow;
+            }
+        }
+        let daughter_id = CellId(self.next_daughter_id);
+        self.next_daughter_id = self.next_daughter_id.saturating_add(1);
+        let mut daughter = Cell::new(daughter_id, genome);
+        daughter.try_transition(LifecycleState::Differentiating)?;
+        daughter.try_transition(LifecycleState::Active)?;
+        if let Some(g) = self.seed_gene {
+            daughter.activate(g);
+        } else {
+            for g in genes {
+                daughter.activate(g);
+            }
+        }
+        population.push(daughter);
+        self.pending_lineage.push((parent_id, daughter_id));
+        self.log_tag(parent_id, if slow { "divide-slow" } else { "divide-fast" });
         Ok(())
     }
 
@@ -389,7 +526,7 @@ impl Scheduler {
             child: crate::signal::SignalId(u128::from(self.prng.next_u64())),
             cell,
             stamp: crate::causality::CausalStamp(i64::from(self.outer_cycles)),
-            tag,
+            tag: tag.into(),
         });
     }
 

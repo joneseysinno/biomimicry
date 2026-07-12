@@ -12,5 +12,9 @@ readme = "../../README.md"
 [dependencies]
 biomimicry = { workspace = true }
 
+[[example]]
+name = "wall_move"
+path = "../../examples/wall_move.rs"
+
 [lints]
 workspace = true

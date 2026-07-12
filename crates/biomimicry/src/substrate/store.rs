@@ -8,7 +8,7 @@
 //! `iter_*` / `clear_hypergraph`) are fleshed out in M1 so infinite-db is a
 //! genuine drop-in at M7. The causal half waits for M7.
 
-use crate::causality::{CausalDag, CausalNode};
+use crate::causality::{CausalDag, CausalEventLog, CausalNode};
 use crate::error::Result;
 use crate::genesis::{Hyperedge, Hypergraph, PrimitiveNode, PrimitiveNodeId};
 use crate::substrate::{BranchId, SnapshotId, SnapshotMeta};
@@ -88,12 +88,29 @@ pub trait Store {
     /// Returns an error on I/O failure.
     fn append_causal(&mut self, node: CausalNode) -> Result<()>;
 
+    /// Replace the entire causal DAG (flush path).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error on I/O failure.
+    fn replace_causal_dag(&mut self, dag: CausalDag) -> Result<()>;
+
     /// Load the causal DAG.
     ///
     /// # Errors
     ///
     /// Returns an error on I/O or corruption.
     fn load_causal_dag(&self) -> Result<CausalDag>;
+
+    /// Attach an event log to be retained by the next [`Self::snapshot`].
+    fn prepare_snapshot_log(&mut self, log: Option<CausalEventLog>) {
+        let _ = log;
+    }
+
+    /// Take an event log restored by the last [`Self::restore`] / [`Self::branch`].
+    fn take_restored_event_log(&mut self) -> Option<CausalEventLog> {
+        None
+    }
 
     /// Take a named snapshot of current store state.
     ///

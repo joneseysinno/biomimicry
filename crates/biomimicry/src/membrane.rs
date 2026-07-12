@@ -4,8 +4,10 @@
 
 pub mod boundary_cell;
 pub mod escalation;
+pub mod fixture;
 pub mod scaling;
 
 pub use boundary_cell::*;
 pub use escalation::*;
+pub use fixture::*;
 pub use scaling::*;

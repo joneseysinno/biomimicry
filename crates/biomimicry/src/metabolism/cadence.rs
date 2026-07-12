@@ -1,7 +1,9 @@
 //! Global K-cadence (Phase 2 cycles per Phase 1 cycle).
 //!
-//! M3 locks one organism-global K (default 10). Per-ganglion `SpaceConfig` K
-//! plugs in at M6 — documented seam, not built now.
+//! M3 locks one organism-global K (default 10). M6 adds thin
+//! [`crate::organism::Organism::effective_k`]: when exactly one non-empty
+//! ganglion exists, settle uses that ganglion's `SpaceConfig.k`; otherwise the
+//! scheduler cadence K applies. Fine-grained per-op K arbitration remains future work.
 
 use crate::error::{BiomimicryError, Result};
 

@@ -1,24 +1,40 @@
-//! Basin membership and fault-tolerance geometry.
+//! Basin membership and fault-tolerance geometry (integer fingerprints).
 
 /// A basin of attraction in the landscape.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Basin {
-    /// Stable attractor identity.
-    pub id: u64,
-    /// Radius / tolerance in state space.
-    pub radius: f64,
+    /// Basin center fingerprint.
+    pub center: u128,
+    /// XOR-distance tolerance (`0` ⇒ exact match only).
+    pub radius: u32,
 }
 
 impl Basin {
-    /// Create a basin around an attractor.
+    /// Create a basin around an attractor fingerprint.
     #[must_use]
-    pub fn new(id: u64, radius: f64) -> Self {
-        Self { id, radius }
+    pub fn new(center: u128, radius: u32) -> Self {
+        Self { center, radius }
     }
 
-    /// Whether a state key is inside this basin.
+    /// Whether a state fingerprint is inside this basin.
     #[must_use]
-    pub fn contains(&self, _state_key: u64) -> bool {
-        todo!("test basin membership")
+    pub fn contains(&self, state_key: u128) -> bool {
+        if self.radius == 0 {
+            return state_key == self.center;
+        }
+        let dist = (state_key ^ self.center).count_ones();
+        dist <= self.radius
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exact_basin() {
+        let b = Basin::new(0xABC, 0);
+        assert!(b.contains(0xABC));
+        assert!(!b.contains(0xABD));
     }
 }

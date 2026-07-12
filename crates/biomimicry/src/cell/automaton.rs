@@ -9,7 +9,8 @@ use super::{
 use crate::causality::CausalClock;
 use crate::error::{BiomimicryError, Result};
 use crate::genesis::{GeneId, Genome};
-use crate::signal::Signal;
+use crate::sensorium::SensoryPolicy;
+use crate::signal::{Signal, SignalKind};
 
 /// Stable handle for a cell within an organism.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -48,6 +49,10 @@ pub struct Cell {
     pub energy: EnergyBudget,
     /// Per-cell monotonic causal stamp clock.
     stamp_clock: CausalClock,
+    /// Kind of the most recent successfully matched inbound signal (M4 rules).
+    pub last_inbound_kind: Option<SignalKind>,
+    /// Optional sensory acceptance policy (M6).
+    pub sensory: Option<SensoryPolicy>,
 }
 
 impl Cell {
@@ -64,6 +69,8 @@ impl Cell {
             pending: OperationQueue::new(),
             energy: EnergyBudget::default(),
             stamp_clock: CausalClock::new(),
+            last_inbound_kind: None,
+            sensory: None,
         }
     }
 
@@ -138,6 +145,15 @@ impl Cell {
             };
         }
 
+        if let Some(policy) = self.sensory {
+            if !policy.accepts(signal.payload.strength_milli, signal.stamp) {
+                return Reaction {
+                    dropped_reason: Some("sensory-policy-reject"),
+                    ..Reaction::default()
+                };
+            }
+        }
+
         let m = self.expression.match_receptors(signal);
         if m.matched.is_empty() {
             return Reaction {
@@ -147,6 +163,12 @@ impl Cell {
                 dropped_reason: Some("receptor-mismatch"),
             };
         }
+
+        if let Some(policy) = &mut self.sensory {
+            policy.record_accept(signal.stamp);
+        }
+
+        self.last_inbound_kind = Some(signal.kind.clone());
 
         let mut enqueued = Vec::new();
         let receive_op = Operation::Receive(signal.clone());

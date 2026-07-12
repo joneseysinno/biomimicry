@@ -1,7 +1,7 @@
 //! Crate error and result types.
 
 use crate::cell::LifecycleState;
-use crate::genesis::{DistanceMode, EndpointPolarity, PrimitiveNodeId};
+use crate::genesis::{DistanceMode, EndpointPolarity, GeneId, PrimitiveNodeId};
 use crate::signal::Phase;
 use thiserror::Error;
 
@@ -110,6 +110,14 @@ pub enum BiomimicryError {
     #[error("substrate error: {0}")]
     Substrate(String),
 
+    /// Snapshot id is unknown to the store.
+    #[error("unknown snapshot {0:?}")]
+    SnapshotUnknown(crate::substrate::SnapshotId),
+
+    /// Checkpoint blocked because the commitment gate is closed.
+    #[error("commitment gate closed")]
+    CommitmentGateClosed,
+
     /// Organism configuration or perturbation failure.
     #[error("organism error: {0}")]
     Organism(String),
@@ -117,6 +125,20 @@ pub enum BiomimicryError {
     /// Generic placeholder until subsystems fill in typed variants.
     #[error("not yet implemented: {0}")]
     Unimplemented(&'static str),
+
+    /// Phase 1 rule network evaluation failed.
+    #[error("rule evaluation failed: {reason}")]
+    RuleEvalFailed {
+        /// Human-readable reason.
+        reason: String,
+    },
+
+    /// No cascade is registered for an active gene that requested transduction.
+    #[error("cascade unavailable for gene {gene:?}")]
+    CascadeUnavailable {
+        /// Gene that lacked a cascade body.
+        gene: GeneId,
+    },
 }
 
 /// Crate-wide result alias.

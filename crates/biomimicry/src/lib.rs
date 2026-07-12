@@ -52,6 +52,8 @@ pub mod substrate;
 pub mod transduction;
 
 #[cfg(test)]
+mod props_m10;
+#[cfg(test)]
 mod smoke {
     use crate::substrate::{MemoryStore, Store};
 

@@ -5,7 +5,8 @@
 //! No `HashMap` iteration — outputs are sorted by [`CellId`].
 
 use crate::cell::{Cell, CellId, LifecycleState};
-use crate::error::{BiomimicryError, Result};
+use crate::error::Result;
+use crate::ganglion::Ganglion;
 use crate::signal::{Scope, Signal, scope_compatible};
 
 /// Whether `target` would receive `sig` (receptor match, not vetoed, not Dead).
@@ -33,6 +34,28 @@ pub fn adjacency(source: &Cell, target: &Cell, sig: &Signal) -> bool {
     source.id != target.id && can_emit(source, sig) && receptor_accepts(target, sig)
 }
 
+/// Resolve Cluster targets: co-members of the source cell's first ganglion.
+#[must_use]
+pub fn cluster_targets(source: CellId, ganglia: &[Ganglion], population: &[Cell]) -> Vec<CellId> {
+    let Some(g) = ganglia.iter().find(|g| g.contains(source)) else {
+        return Vec::new();
+    };
+    let mut ids: Vec<CellId> = g
+        .members
+        .iter()
+        .copied()
+        .filter(|id| *id != source)
+        .filter(|id| {
+            population
+                .iter()
+                .find(|c| c.id == *id)
+                .is_some_and(|c| c.lifecycle() != LifecycleState::Dead)
+        })
+        .collect();
+    ids.sort();
+    ids
+}
+
 /// Resolve delivery targets by scope (§2.4).
 ///
 /// | Scope | Reach |
@@ -40,20 +63,22 @@ pub fn adjacency(source: &Cell, target: &Cell, sig: &Signal) -> bool {
 /// | `SelfCell` | source only |
 /// | `Neighbors` | direct receptor-matchers (exclude source) |
 /// | `Systemwide` | every receptor-matching cell |
-/// | `Cluster` | [`BiomimicryError::ScopeUnavailable`] until M6 |
+/// | `Cluster` | other living members of the source's ganglion |
 ///
 /// Output is sorted by [`CellId`].
 ///
 /// # Errors
 ///
-/// Returns `ScopeUnavailable` for `Cluster`.
-pub fn resolve_targets(source: &Cell, population: &[Cell], sig: &Signal) -> Result<Vec<CellId>> {
+/// Infallible in M6 (Cluster no longer returns `ScopeUnavailable`).
+pub fn resolve_targets(
+    source: &Cell,
+    population: &[Cell],
+    sig: &Signal,
+    ganglia: &[Ganglion],
+) -> Result<Vec<CellId>> {
     match sig.scope {
         Scope::SelfCell => Ok(vec![source.id]),
-        Scope::Cluster => Err(BiomimicryError::ScopeUnavailable {
-            scope: Scope::Cluster,
-            since_milestone: 6,
-        }),
+        Scope::Cluster => Ok(cluster_targets(source.id, ganglia, population)),
         Scope::Neighbors => {
             let mut ids: Vec<CellId> = population
                 .iter()
@@ -84,14 +109,16 @@ pub fn resolve_targets_bruteforce(
     source: &Cell,
     population: &[Cell],
     sig: &Signal,
+    ganglia: &[Ganglion],
 ) -> Result<Vec<CellId>> {
-    resolve_targets(source, population, sig)
+    resolve_targets(source, population, sig, ganglia)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::cell::fixture::active_sensory_cell;
+    use crate::ganglion::GanglionHandle;
     use crate::signal::{CausalStamp, Payload, SignalType};
 
     #[test]
@@ -105,12 +132,12 @@ mod tests {
             cell.id,
             CausalStamp(0),
         );
-        let targets = resolve_targets(&cell, std::slice::from_ref(&cell), &sig).unwrap();
+        let targets = resolve_targets(&cell, std::slice::from_ref(&cell), &sig, &[]).unwrap();
         assert_eq!(targets, vec![cell.id]);
     }
 
     #[test]
-    fn cluster_unavailable() {
+    fn cluster_empty_without_ganglion() {
         let (cell, _) = active_sensory_cell();
         let sig = Signal::new(
             SignalType::Operational,
@@ -120,13 +147,32 @@ mod tests {
             cell.id,
             CausalStamp(0),
         );
-        let err = resolve_targets(&cell, std::slice::from_ref(&cell), &sig).unwrap_err();
-        assert!(matches!(
-            err,
-            BiomimicryError::ScopeUnavailable {
-                scope: Scope::Cluster,
-                since_milestone: 6
-            }
-        ));
+        let targets = resolve_targets(&cell, std::slice::from_ref(&cell), &sig, &[]).unwrap();
+        assert!(targets.is_empty());
+    }
+
+    #[test]
+    fn cluster_delivers_to_co_members() {
+        let (a, _) = active_sensory_cell();
+        let genome = a.genome.clone();
+        let mut b = crate::cell::Cell::new(CellId(2), genome);
+        b.try_transition(crate::cell::LifecycleState::Differentiating)
+            .unwrap();
+        b.try_transition(crate::cell::LifecycleState::Active)
+            .unwrap();
+        let mut g = Ganglion::new(GanglionHandle(1), "circuit", 4);
+        g.try_add(a.id);
+        g.try_add(b.id);
+        let sig = Signal::new(
+            SignalType::Operational,
+            "trigger",
+            Scope::Cluster,
+            Payload::empty(),
+            a.id,
+            CausalStamp(0),
+        );
+        let pop = [a.clone(), b];
+        let targets = resolve_targets(&a, &pop, &sig, std::slice::from_ref(&g)).unwrap();
+        assert_eq!(targets, vec![CellId(2)]);
     }
 }

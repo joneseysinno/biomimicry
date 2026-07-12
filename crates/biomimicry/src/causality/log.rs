@@ -15,7 +15,7 @@ pub struct CausalEvent {
     /// Causal stamp of the child.
     pub stamp: CausalStamp,
     /// Short tag (`deliver`, `emit`, `transduce`, …).
-    pub tag: &'static str,
+    pub tag: String,
 }
 
 /// Ordered in-memory causal event stream (byte-identical under fixed seed).

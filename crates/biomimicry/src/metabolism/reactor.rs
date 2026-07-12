@@ -4,8 +4,10 @@
 //! cascade bodies behind the same signatures.
 
 use crate::cell::{Cell, Operation};
+use crate::expression::NetworkRegulator;
 use crate::genesis::GeneId;
 use crate::signal::{Payload, Scope, Signal, SignalKind, SignalType};
+use crate::transduction::CascadeTransducer;
 
 /// Expression changes produced by a Phase 1 regulatory step.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -38,8 +40,8 @@ pub trait Regulator {
 /// Phase 2 brain seam: decide operations/emissions from a transduction.
 pub trait Transducer {
     /// Produce follow-on operations for `cell` given an inbound operational
-    /// context signal (may be the signal that triggered a `Transduce`).
-    fn transduce(&self, cell: &Cell, sig: &Signal) -> Vec<Operation>;
+    /// context signal and the gene that requested transduction.
+    fn transduce(&self, cell: &Cell, sig: &Signal, gene: GeneId) -> Vec<Operation>;
 }
 
 /// M3 stand-in: apply exactly the explicit `Express { gene, on }` ops.
@@ -78,7 +80,8 @@ impl Default for EchoTransducer {
 }
 
 impl Transducer for EchoTransducer {
-    fn transduce(&self, cell: &Cell, sig: &Signal) -> Vec<Operation> {
+    fn transduce(&self, cell: &Cell, sig: &Signal, gene: GeneId) -> Vec<Operation> {
+        let _ = (sig, gene);
         let stamp = cell.peek_stamp();
         let follow = Signal::new(
             SignalType::Operational,
@@ -88,8 +91,54 @@ impl Transducer for EchoTransducer {
             cell.id,
             stamp,
         );
-        // Preserve causal link in payload metadata? Keep simple — Emit follow-on.
-        let _ = sig;
         vec![Operation::Emit(follow)]
+    }
+}
+
+/// Pluggable Phase 1 brain (enum — no `Box<dyn>` alloc surprises).
+#[derive(Debug, Clone)]
+pub enum Phase1Brain {
+    /// M3 explicit Express stand-in.
+    Explicit(ExplicitRegulator),
+    /// M4 rule network.
+    Network(NetworkRegulator),
+}
+
+impl Default for Phase1Brain {
+    fn default() -> Self {
+        Self::Explicit(ExplicitRegulator)
+    }
+}
+
+impl Regulator for Phase1Brain {
+    fn regulate(&self, cell: &Cell, queued: &[Operation]) -> ExpressionDelta {
+        match self {
+            Self::Explicit(r) => r.regulate(cell, queued),
+            Self::Network(r) => r.regulate(cell, queued),
+        }
+    }
+}
+
+/// Pluggable Phase 2 brain (enum — no `Box<dyn>` alloc surprises).
+#[derive(Debug, Clone)]
+pub enum Phase2Brain {
+    /// M3 echo stand-in.
+    Echo(EchoTransducer),
+    /// M4 cascade map.
+    Cascade(CascadeTransducer),
+}
+
+impl Default for Phase2Brain {
+    fn default() -> Self {
+        Self::Echo(EchoTransducer::default())
+    }
+}
+
+impl Transducer for Phase2Brain {
+    fn transduce(&self, cell: &Cell, sig: &Signal, gene: GeneId) -> Vec<Operation> {
+        match self {
+            Self::Echo(t) => t.transduce(cell, sig, gene),
+            Self::Cascade(t) => t.transduce(cell, sig, gene),
+        }
     }
 }

@@ -65,12 +65,24 @@ impl From<&str> for MetaValue {
 }
 
 /// Payload body + metadata map carried by a [`super::Signal`].
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Payload {
     /// Opaque content bytes (typed interpretation is gene-defined).
     pub body: Vec<u8>,
     /// Optional tagged metadata (e.g. observation).
     pub metadata: BTreeMap<Tag, MetaValue>,
+    /// Signal strength in milli-units (sensorium threshold gate; default 1000).
+    pub strength_milli: u32,
+}
+
+impl Default for Payload {
+    fn default() -> Self {
+        Self {
+            body: Vec::new(),
+            metadata: BTreeMap::new(),
+            strength_milli: 1000,
+        }
+    }
 }
 
 impl Payload {
@@ -80,6 +92,7 @@ impl Payload {
         Self {
             body: body.into(),
             metadata: BTreeMap::new(),
+            strength_milli: 1000,
         }
     }
 
@@ -87,6 +100,13 @@ impl Payload {
     #[must_use]
     pub fn empty() -> Self {
         Self::default()
+    }
+
+    /// Builder: set strength milli.
+    #[must_use]
+    pub fn with_strength(mut self, strength_milli: u32) -> Self {
+        self.strength_milli = strength_milli;
+        self
     }
 
     /// Builder: insert a metadata entry.
@@ -117,6 +137,7 @@ impl Payload {
             u32::try_from(self.body.len()).expect("body length fits u32"),
         );
         hasher.update(&self.body);
+        hasher.update(&self.strength_milli.to_le_bytes());
         update_u32(
             &mut hasher,
             u32::try_from(self.metadata.len()).expect("metadata count fits u32"),

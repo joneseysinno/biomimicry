@@ -27,9 +27,15 @@ smol_str = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
+criterion = { workspace = true }
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "settle"
+harness = false
+path = "../../benches/settle.rs"
 
 [[example]]
 name = "minimal_organism"
@@ -38,3 +44,11 @@ path = "../../examples/minimal_organism.rs"
 [[example]]
 name = "first_settle"
 path = "../../examples/first_settle.rs"
+
+[[example]]
+name = "echo_ingress"
+path = "../../examples/echo_ingress.rs"
+
+[[example]]
+name = "replay_checkpoint"
+path = "../../examples/replay_checkpoint.rs"

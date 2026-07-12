@@ -71,6 +71,50 @@ pub fn toy_dna() -> SpatialHypergraph {
     g
 }
 
+/// M4 cascade DNA: `cascade_path` has Receptor+/Expression+/Transduction+;
+/// `effector` is a second gene activated by the rule network.
+///
+/// Endpoints for cascade_path: `Receptor+ trigger`, `Expression+`, `Transduction+`.
+#[must_use]
+pub fn cascade_dna() -> SpatialHypergraph {
+    let mut g = SpatialHypergraph::new();
+
+    let receptor = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0, 0]));
+    let expr = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([2, 0]));
+    let transduction = PrimitiveNode::new(Primitive::Transduction, DimensionVector::new([6, 0]));
+    let r2 = PrimitiveNode::new(Primitive::Receptor, DimensionVector::new([0, 10]));
+    let e2 = PrimitiveNode::new(Primitive::Expression, DimensionVector::new([1, 10]));
+
+    for n in [
+        receptor.clone(),
+        expr.clone(),
+        transduction.clone(),
+        r2.clone(),
+        e2.clone(),
+    ] {
+        g.add_node(n).expect("add node");
+    }
+
+    g.add_hyperedge(Hyperedge::new(
+        "cascade_path",
+        vec![
+            endpoint(&receptor, EndpointPolarity::Positive, "trigger", None),
+            endpoint(&expr, EndpointPolarity::Positive, "activate", None),
+            endpoint(&transduction, EndpointPolarity::Positive, "produce", None),
+        ],
+    ));
+
+    g.add_hyperedge(Hyperedge::new(
+        "effector",
+        vec![
+            endpoint(&r2, EndpointPolarity::Positive, "gate", None),
+            endpoint(&e2, EndpointPolarity::Positive, "out", None),
+        ],
+    ));
+
+    g
+}
+
 /// Append a deliberately invalid (dangling) hyperedge to a clone of `base`.
 #[must_use]
 pub fn with_dangling(base: &SpatialHypergraph) -> SpatialHypergraph {

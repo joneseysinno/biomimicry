@@ -2,37 +2,18 @@
 
 Biological computing engine: **computation as settling** in a living hypergraph.
 
-There is no `main()` and no orchestrator. You build an `Organism`, `perturb` it, and let it `settle`.
+There is no `main()` and no orchestrator. You build an `Organism`, `perturb` (or `ingress`) it, and let it `settle`.
 
-> Status: **M0 scaffold** — full module tree as documented stubs. Subsystems land per the milestone plan in [`biomimicry_scaffolding_plan.md`](./biomimicry_scaffolding_plan.md).
+> Status: **M10 / gardenable 0.1.0** — documented, tested, and benchmarked. Iterate on rulesets by observing where they settle. Research seams (Hilbert, infinite-db Spaces, provenance learning) remain post-0.1.
 
 ## Workspace
 
 | Crate | Role |
 |-------|------|
 | `biomimicry` | Core engine library |
-| `biomimicry-substrate` | Optional `infinite-db` `Store` (Milestone 7) |
-| `biomimicry-aec` | AEC reference app (Milestone 9) |
-| `biomimicry-inspector` | Causal DAG / landscape inspector (Milestone 5) |
-
-## Module convention
-
-- Every `<module>.rs` holds **only** module docs, `mod` declarations, and `pub use` re-exports.
-- Every type and function lives in a **leaf file** named for its single concern (e.g. `genesis/compile.rs`).
-- **No `mod.rs` files.** A module `foo` with children is `foo.rs` + a `foo/` directory beside it.
-
-## Feature flags
-
-```toml
-[features]
-default = ["memory-store", "determinism"]
-memory-store = []   # in-memory Store (fast tests)
-infinite-db = []    # marker — use the biomimicry-substrate crate for the real backend
-determinism = []    # seeded, replayable scheduling
-inspector = []      # emit DAG/landscape traces for the inspector tool
-```
-
-The `Store` trait lives in `biomimicry::substrate`. The concrete `infinite-db` implementation is a **separate crate** (`biomimicry-substrate`) so the core never hard-depends on persistence and never forms a circular crate dependency.
+| `biomimicry-substrate` | Optional durable `Store` (MemoryStore blob; Space schema deferred) |
+| `biomimicry-aec` | AEC wall-move reference app (Part VIII) |
+| `biomimicry-inspector` | Causal DAG / landscape / scenario traces |
 
 ## Quick start
 
@@ -41,19 +22,59 @@ cargo build --workspace
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo doc --workspace --no-deps
+cargo bench -p biomimicry          # Criterion (manual; not in CI by default)
+cargo run -p biomimicry-inspector -- --scenario cascade
 ```
 
 ```rust
 use biomimicry::prelude::*;
+use biomimicry::organism::{settle_ready, trigger_signal};
 
-// M0: Store + types exist; organism assembly lands across M1–M5.
-let store = MemoryStore::new();
-let _ = store;
+fn main() {
+    let mut org = settle_ready(42);
+    org.perturb(trigger_signal()).expect("perturb");
+    let status = org.settle(32).expect("settle");
+    println!("{status:?}");
+}
 ```
 
-## Milestones
+## Example gallery
 
-See [`biomimicry_scaffolding_plan.md`](./biomimicry_scaffolding_plan.md). **M5 (first settle)** is the keystone.
+| Example | Package | Story |
+|---------|---------|-------|
+| `minimal_organism` | biomimicry | Scaffold construct |
+| `first_settle` | biomimicry | Cascade perturb → settle |
+| `echo_ingress` | biomimicry | M8 matched-signaling echo |
+| `replay_checkpoint` | biomimicry | M7 checkpoint / restore |
+| `wall_move` | biomimicry-aec | M9 Part VIII reflex |
+
+```bash
+cargo run -p biomimicry --example first_settle
+cargo run -p biomimicry --example echo_ingress
+cargo run -p biomimicry --example replay_checkpoint
+cargo run -p biomimicry-aec --example wall_move
+```
+
+## Module convention
+
+- Every `<module>.rs` holds **only** module docs, `mod` declarations, and `pub use` re-exports.
+- Every type and function lives in a **leaf file** named for its single concern.
+- **No `mod.rs` files.**
+
+## Feature flags
+
+```toml
+[features]
+default = ["memory-store", "determinism"]
+memory-store = []
+infinite-db = []    # marker — real backend in biomimicry-substrate
+determinism = []
+inspector = []
+```
+
+## Plans & design
+
+Milestone JIT plans and the scaffolding index live under [`plans/`](./plans/). Design source: [`plans/biological_computing_engine_design.md`](./plans/biological_computing_engine_design.md). Scaffolding map: [`plans/biomimicry_scaffolding_plan.md`](./plans/biomimicry_scaffolding_plan.md).
 
 ## License
 

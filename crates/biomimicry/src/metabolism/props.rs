@@ -54,7 +54,7 @@ proptest! {
             source.id,
             CausalStamp(0),
         );
-        let t = resolve_targets(source, pop.cells(), &self_sig).unwrap();
+        let t = resolve_targets(source, pop.cells(), &self_sig, &[]).unwrap();
         prop_assert_eq!(t, vec![source.id]);
 
         let neigh = Signal::new(
@@ -66,8 +66,8 @@ proptest! {
             CausalStamp(0),
         );
         let sys = systemwide_trigger(source.id, CausalStamp(0));
-        let tn = resolve_targets(source, pop.cells(), &neigh).unwrap();
-        let ts = resolve_targets(source, pop.cells(), &sys).unwrap();
+        let tn = resolve_targets(source, pop.cells(), &neigh, &[]).unwrap();
+        let ts = resolve_targets(source, pop.cells(), &sys, &[]).unwrap();
         prop_assert!(tn.iter().all(|id| ts.contains(id)));
         prop_assert!(!tn.contains(&source.id));
 
@@ -79,15 +79,9 @@ proptest! {
             source.id,
             CausalStamp(0),
         );
-        let err = resolve_targets(source, pop.cells(), &cluster).unwrap_err();
-        let is_unavail = matches!(
-            err,
-            BiomimicryError::ScopeUnavailable {
-                scope: Scope::Cluster,
-                ..
-            }
-        );
-        prop_assert!(is_unavail);
+        // M6: Cluster with no ganglia → empty targets (not ScopeUnavailable).
+        let tc = resolve_targets(source, pop.cells(), &cluster, &[]).unwrap();
+        prop_assert!(tc.is_empty());
     }
 
     /// P6 · surface-intersection = brute-force scan.
@@ -104,8 +98,8 @@ proptest! {
             source.id,
             CausalStamp(0),
         );
-        let a = resolve_targets(source, pop.cells(), &sig).unwrap();
-        let b = resolve_targets_bruteforce(source, pop.cells(), &sig).unwrap();
+        let a = resolve_targets(source, pop.cells(), &sig, &[]).unwrap();
+        let b = resolve_targets_bruteforce(source, pop.cells(), &sig, &[]).unwrap();
         prop_assert_eq!(a, b);
     }
 }

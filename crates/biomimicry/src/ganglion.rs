@@ -2,10 +2,12 @@
 //!
 //! Declarations and re-exports only — no types or logic live here.
 
+pub mod debug;
 pub mod handle;
 pub mod health;
 pub mod population;
 
+pub use debug::*;
 pub use handle::*;
 pub use health::*;
 pub use population::*;

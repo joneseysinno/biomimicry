@@ -7,7 +7,9 @@
 use crate::causality::{CausalEvent, CausalEventLog};
 use crate::cell::{Cell, CellId, LifecycleState, Operation};
 use crate::error::Result;
+use crate::ganglion::Ganglion;
 use crate::medium::scoping::resolve_targets;
+use crate::sensorium::{ReadoutCollector, SignalSample};
 use crate::signal::Signal;
 
 /// An operation scheduled against a specific cell.
@@ -38,20 +40,30 @@ impl Medium {
 
     /// Deliver an emitted signal: resolve targets → schedule `Receive` ops.
     ///
-    /// Returns the scheduled receives in stable `CellId` order. Dead targets
-    /// are skipped. Also appends causal log events.
+    /// When `signal.payload` is observation-tagged, also records a passive
+    /// sample on `collector` (if provided).
     ///
     /// # Errors
     ///
-    /// Propagates `ScopeUnavailable` (e.g. `Cluster`).
+    /// Propagates scope resolution errors (none for Cluster in M6).
     pub fn deliver(
         &mut self,
         source: &Cell,
         population: &[Cell],
         signal: &Signal,
         log: &mut CausalEventLog,
+        ganglia: &[Ganglion],
+        collector: Option<&mut ReadoutCollector>,
     ) -> Result<Vec<ScheduledOp>> {
-        let targets = resolve_targets(source, population, signal)?;
+        if let Some(col) = collector {
+            if signal.payload.is_observation() {
+                col.observe(SignalSample {
+                    source: source.id.0,
+                    payload: signal.payload.clone(),
+                });
+            }
+        }
+        let targets = resolve_targets(source, population, signal, ganglia)?;
         let mut out = Vec::with_capacity(targets.len());
         for tid in targets {
             let Some(target) = population.iter().find(|c| c.id == tid) else {
@@ -60,13 +72,12 @@ impl Medium {
             if target.lifecycle() == LifecycleState::Dead {
                 continue;
             }
-            // Child signal identity is the delivered event (same content; log edge).
             log.push(CausalEvent {
                 parent: Some(signal.id),
                 child: signal.id,
                 cell: tid,
                 stamp: signal.stamp,
-                tag: "deliver",
+                tag: "deliver".into(),
             });
             out.push(ScheduledOp {
                 cell: tid,

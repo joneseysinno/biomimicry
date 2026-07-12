@@ -40,6 +40,16 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
 
+  benches:
+    name: bench compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo bench --no-run
+        run: cargo bench -p biomimicry --no-run
+
   deny:
     name: cargo-deny
     runs-on: ubuntu-latest

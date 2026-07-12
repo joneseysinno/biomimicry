@@ -8,6 +8,9 @@ pub mod loop_;
 pub mod population_size;
 pub mod signal_flux;
 
+#[cfg(test)]
+mod props;
+
 pub use attractor_stability::*;
 pub use damping::*;
 pub use loop_::*;

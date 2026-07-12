@@ -4,10 +4,17 @@
 
 pub mod basin;
 pub mod convergence;
+pub mod debug;
 pub mod divergence;
+pub mod fingerprint;
 pub mod landscape;
+
+#[cfg(test)]
+mod props;
 
 pub use basin::*;
 pub use convergence::*;
+pub use debug::*;
 pub use divergence::*;
+pub use fingerprint::*;
 pub use landscape::*;

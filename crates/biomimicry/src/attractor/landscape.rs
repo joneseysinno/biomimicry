@@ -1,22 +1,37 @@
-//! State-space terrain model for computation-as-relaxation.
+//! State-space terrain model for computation-as-relaxation (integer depths).
 
-/// Abstract energy / fitness landscape over organism state.
-#[derive(Debug, Clone, Default)]
+use std::collections::BTreeMap;
+
+/// Abstract energy / fitness landscape over organism fingerprints.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Landscape {
-    /// Sampled height field placeholder (filled by later milestones).
-    pub samples: Vec<f64>,
+    /// Fingerprint → milli-potential depth (higher = less settled).
+    pub samples: BTreeMap<u128, u32>,
+    /// Default potential when a fingerprint is unregistered.
+    pub default_potential: u32,
 }
 
 impl Landscape {
-    /// Create an empty landscape.
+    /// Create an empty landscape (default potential 1000).
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            samples: BTreeMap::new(),
+            default_potential: 1000,
+        }
     }
 
-    /// Estimate potential energy of a state key.
+    /// Register a sample depth for a fingerprint.
+    pub fn insert(&mut self, state_key: u128, milli_potential: u32) {
+        self.samples.insert(state_key, milli_potential);
+    }
+
+    /// Estimate potential energy of a state fingerprint (milli-units).
     #[must_use]
-    pub fn potential(&self, _state_key: u64) -> f64 {
-        todo!("evaluate landscape potential at state")
+    pub fn potential(&self, state_key: u128) -> u32 {
+        self.samples
+            .get(&state_key)
+            .copied()
+            .unwrap_or(self.default_potential)
     }
 }

@@ -18,9 +18,11 @@ pub struct CommitmentGate {
 }
 
 impl CommitmentGate {
-    /// Attempt to commit if the gate is open and preconditions hold.
+    /// Attempt to commit if the gate is open.
+    ///
+    /// M7: returns [`Self::open`] (no additional preconditions).
     #[must_use]
     pub fn try_commit(&self) -> bool {
-        todo!("gate working → committed equilibrium")
+        self.open
     }
 }
