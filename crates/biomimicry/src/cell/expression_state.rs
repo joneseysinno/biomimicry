@@ -271,7 +271,10 @@ pub fn operations_for_matched_gene(
         });
     }
     if saw_trans_pos {
-        ops.push(Operation::Transduce(gene_id));
+        ops.push(Operation::Transduce {
+            gene: gene_id,
+            input: inbound.clone(),
+        });
     }
     if let Some(ep) = emit_ep {
         let scope = ep.scope.unwrap_or(inbound.scope);

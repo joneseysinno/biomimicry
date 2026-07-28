@@ -85,6 +85,7 @@ pub(crate) fn cmp_scheduled(a: &ScheduledOp, b: &ScheduledOp) -> std::cmp::Order
 fn signal_of(op: &Operation) -> Option<&crate::signal::Signal> {
     match op {
         Operation::Receive(s) | Operation::Emit(s) => Some(s),
+        Operation::Transduce { input, .. } => Some(input),
         _ => None,
     }
 }
@@ -98,7 +99,7 @@ fn op_rank(op: &Operation) -> u8 {
         Operation::DivideFast => 4,
         Operation::DivideSlow => 5,
         Operation::Receive(_) => 6,
-        Operation::Transduce(_) => 7,
+        Operation::Transduce { .. } => 7,
         Operation::Emit(_) => 8,
     }
 }

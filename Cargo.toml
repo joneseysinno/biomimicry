@@ -4,6 +4,7 @@ members = [
     "crates/biomimicry",
     "crates/biomimicry-substrate",
     "crates/biomimicry-aec",
+    "crates/biomimicry-genomes",
     "tools/biomimicry-inspector",
 ]
 default-members = ["crates/biomimicry"]
@@ -20,6 +21,7 @@ authors = ["biomimicry contributors"]
 biomimicry = { path = "crates/biomimicry", version = "0.2.0" }
 biomimicry-substrate = { path = "crates/biomimicry-substrate", version = "0.2.0" }
 biomimicry-aec = { path = "crates/biomimicry-aec", version = "0.2.0" }
+biomimicry-genomes = { path = "crates/biomimicry-genomes", version = "0.2.0" }
 infinite-db = { version = "0.4.0", default-features = false, features = ["embedded"] }
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }

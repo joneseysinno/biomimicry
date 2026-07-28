@@ -47,6 +47,12 @@ impl ReadoutCollector {
     pub fn is_empty(&self) -> bool {
         self.samples.is_empty()
     }
+
+    /// Borrow buffered samples without draining.
+    #[must_use]
+    pub fn samples(&self) -> &[SignalSample] {
+        &self.samples
+    }
 }
 
 #[cfg(test)]

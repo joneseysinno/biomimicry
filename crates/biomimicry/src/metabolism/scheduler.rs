@@ -153,7 +153,7 @@ impl Scheduler {
         match op.op.phase() {
             Phase::Phase1 => self.phase1.push(op),
             Phase::Phase2 => {
-                if matches!(op.op, Operation::Transduce(_)) {
+                if matches!(op.op, Operation::Transduce { .. }) {
                     self.held_transduce.push(op);
                 } else {
                     self.phase2.push(op);
@@ -257,7 +257,7 @@ impl Scheduler {
         while let Some(op) = cell.pending.pop() {
             let scheduled = ScheduledOp { cell: id, op };
             match &scheduled.op {
-                Operation::Transduce(_) => self.held_transduce.push(scheduled),
+                Operation::Transduce { .. } => self.held_transduce.push(scheduled),
                 _ => match scheduled.op.phase() {
                     Phase::Phase1 => self.phase1.push(scheduled),
                     Phase::Phase2 => self.phase2.push(scheduled),
@@ -381,7 +381,7 @@ impl Scheduler {
                         self.absorb_cell(population, scheduled.cell);
                     }
                 }
-                Operation::Transduce(gene) => {
+                Operation::Transduce { gene, input } => {
                     let cell_id = scheduled.cell;
                     let (ops, stamp) = {
                         let cell = population.get_mut(cell_id).expect("cell");
@@ -392,14 +392,11 @@ impl Scheduler {
                             continue;
                         }
                         let stamp = cell.next_stamp();
-                        let ctx = Signal::new(
-                            SignalType::Operational,
-                            "transduce",
-                            Scope::SelfCell,
-                            Payload::empty(),
-                            cell_id,
-                            stamp,
-                        );
+                        // Prefer the match-trigger payload (operands); fall back
+                        // to a stamped empty context when none was provided.
+                        let mut ctx = input;
+                        ctx.source = cell_id;
+                        ctx.stamp = stamp;
                         let ops = self.transducer.transduce(cell, &ctx, gene);
                         (ops, stamp)
                     };

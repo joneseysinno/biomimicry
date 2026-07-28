@@ -26,7 +26,11 @@ impl Cascade {
         self
     }
 
-    /// Run all steps in order; concatenate outputs.
+    /// Run all steps in order; each step consumes the previous step's outputs.
+    ///
+    /// The first step receives `input`. Every subsequent step is called once per
+    /// signal produced by the prior step. All intermediate and final outputs are
+    /// concatenated (so multi-step identity-echo cascades still emit every kind).
     ///
     /// The `expression` parameter is reserved for future gene-gated steps;
     /// activity gating lives in [`crate::transduction::CascadeTransducer`].
@@ -36,10 +40,22 @@ impl Cascade {
     /// Currently infallible; reserved for future binding failures.
     pub fn run(&self, expression: &ExpressionState, input: &Signal) -> Result<Vec<Signal>> {
         let _ = expression;
-        let mut out = Vec::new();
-        for step in &self.steps {
-            out.extend(step.call(input));
+        if self.steps.is_empty() {
+            return Ok(Vec::new());
         }
-        Ok(out)
+        let mut current = vec![input.clone()];
+        let mut all = Vec::new();
+        for step in &self.steps {
+            let mut next = Vec::new();
+            for sig in &current {
+                next.extend(step.call(sig));
+            }
+            all.extend(next.iter().cloned());
+            current = next;
+            if current.is_empty() {
+                break;
+            }
+        }
+        Ok(all)
     }
 }

@@ -22,7 +22,14 @@ pub enum Operation {
         on: bool,
     },
     /// Run transduction for a gene (Phase 2) — execution deferred to M3/M4.
-    Transduce(GeneId),
+    ///
+    /// `input` is the inbound signal that triggered the match (operands / meta).
+    Transduce {
+        /// Gene whose cascade to run.
+        gene: GeneId,
+        /// Trigger signal (payload available to [`crate::transduction::TransductionFn`]).
+        input: Signal,
+    },
     /// Emit an outbound signal (Phase 2).
     Emit(Signal),
     /// Enter differentiating lifecycle path (Phase 1 control).
@@ -42,7 +49,7 @@ impl Operation {
     #[must_use]
     pub const fn phase(&self) -> Phase {
         match self {
-            Self::Receive(_) | Self::Transduce(_) | Self::Emit(_) => Phase::Phase2,
+            Self::Receive(_) | Self::Transduce { .. } | Self::Emit(_) => Phase::Phase2,
             Self::Express { .. }
             | Self::Differentiate
             | Self::DivideFast
@@ -78,7 +85,7 @@ impl Operation {
                 op: self.op_name(),
                 since_milestone: 6,
             }),
-            Self::Transduce(_) => Err(BiomimicryError::OperationUnavailable {
+            Self::Transduce { .. } => Err(BiomimicryError::OperationUnavailable {
                 op: self.op_name(),
                 since_milestone: 3,
             }),
@@ -97,7 +104,7 @@ impl Operation {
         match self {
             Self::Receive(_) => "receive",
             Self::Express { .. } => "express",
-            Self::Transduce(_) => "transduce",
+            Self::Transduce { .. } => "transduce",
             Self::Emit(_) => "emit",
             Self::Differentiate => "differentiate",
             Self::DivideFast => "divide-fast",
@@ -197,6 +204,21 @@ mod tests {
             .phase(),
             Phase::Phase1
         );
-        assert_eq!(Operation::Transduce(GeneId(1)).phase(), Phase::Phase2);
+        let stub = Signal::new(
+            crate::signal::SignalType::Operational,
+            "stub",
+            crate::signal::Scope::SelfCell,
+            crate::signal::Payload::empty(),
+            crate::cell::CellId(0),
+            crate::signal::CausalStamp(0),
+        );
+        assert_eq!(
+            Operation::Transduce {
+                gene: GeneId(1),
+                input: stub,
+            }
+            .phase(),
+            Phase::Phase2
+        );
     }
 }

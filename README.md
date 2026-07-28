@@ -15,6 +15,7 @@ Engine DNA types speak biology (`Cistron`, `Grn`); infinite-db's `Hyperedge` / `
 | `biomimicry` | Core engine library |
 | `biomimicry-substrate` | Optional durable `Store` (MemoryStore blob; Space schema deferred) |
 | `biomimicry-aec` | AEC wall-move reference app (Part VIII) |
+| `biomimicry-genomes` | Default genomes library (`engineer_calculator`, …) |
 | `biomimicry-inspector` | Causal DAG / landscape / scenario traces |
 
 ## Quick start

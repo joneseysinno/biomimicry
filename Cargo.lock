@@ -89,6 +89,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "biomimicry-genomes"
+version = "0.2.0"
+dependencies = [
+ "biomimicry",
+]
+
+[[package]]
 name = "biomimicry-inspector"
 version = "0.2.0"
 dependencies = [
