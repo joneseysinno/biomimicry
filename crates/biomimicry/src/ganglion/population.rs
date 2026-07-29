@@ -1,5 +1,6 @@
 //! Bounded set of cell handles tracked as a unit.
 
+use super::port::GanglionPort;
 use super::{GanglionHandle, GanglionHealth};
 use crate::cell::{Cell, CellId, LifecycleState};
 use crate::metabolism::SpaceConfig;
@@ -19,6 +20,8 @@ pub struct Ganglion {
     pub health: GanglionHealth,
     /// Per-ganglion Phase-2 K seam (M6).
     pub space: SpaceConfig,
+    /// Declared input/output ports (membership is derived at call time).
+    pub ports: Vec<GanglionPort>,
 }
 
 impl Ganglion {
@@ -32,6 +35,7 @@ impl Ganglion {
             capacity,
             health: GanglionHealth::Healthy,
             space: SpaceConfig { k: 10 },
+            ports: Vec::new(),
         }
     }
 
@@ -39,6 +43,20 @@ impl Ganglion {
     #[must_use]
     pub fn with_space(mut self, space: SpaceConfig) -> Self {
         self.space = space;
+        self
+    }
+
+    /// Builder: append a port.
+    #[must_use]
+    pub fn with_port(mut self, port: GanglionPort) -> Self {
+        self.ports.push(port);
+        self
+    }
+
+    /// Builder: replace the port list.
+    #[must_use]
+    pub fn with_ports(mut self, ports: Vec<GanglionPort>) -> Self {
+        self.ports = ports;
         self
     }
 

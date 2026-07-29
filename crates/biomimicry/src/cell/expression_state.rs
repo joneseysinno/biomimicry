@@ -276,17 +276,21 @@ pub fn operations_for_matched_gene(
             input: inbound.clone(),
         });
     }
+    // When Transduction+ is present the cascade owns emission; skip the
+    // empty Signal+ template emit so cascade payloads are not overwritten.
     if let Some(ep) = emit_ep {
-        let scope = ep.scope.unwrap_or(inbound.scope);
-        let outbound = Signal::new(
-            SignalType::Operational,
-            signal_kind_from_role(&ep.role),
-            scope,
-            Payload::empty(),
-            inbound.source,
-            inbound.stamp,
-        );
-        ops.push(Operation::Emit(outbound));
+        if !saw_trans_pos {
+            let scope = ep.scope.unwrap_or(inbound.scope);
+            let outbound = Signal::new(
+                SignalType::Operational,
+                signal_kind_from_role(&ep.role),
+                scope,
+                Payload::empty(),
+                inbound.source,
+                inbound.stamp,
+            );
+            ops.push(Operation::Emit(outbound));
+        }
     }
 
     ops

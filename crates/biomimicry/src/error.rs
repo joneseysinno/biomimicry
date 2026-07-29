@@ -5,6 +5,8 @@ use crate::genesis::{DistanceMode, EndpointPolarity, GeneId, PrimitiveNodeId};
 use crate::signal::Phase;
 use thiserror::Error;
 
+pub use crate::blocks::LinkError;
+
 /// Errors produced by the biomimicry engine.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum BiomimicryError {
@@ -138,6 +140,74 @@ pub enum BiomimicryError {
     CascadeUnavailable {
         /// Gene that lacked a cascade body.
         gene: GeneId,
+    },
+
+    /// Transduction received a value of the wrong type.
+    #[error("value type mismatch in `{function}`: expected {expected}, got {got}")]
+    ValueTypeMismatch {
+        /// Function / op name.
+        function: String,
+        /// Expected shape description.
+        expected: String,
+        /// Actual shape description.
+        got: String,
+    },
+
+    /// Nested [`crate::signal::Value`] exceeded [`crate::signal::MAX_VALUE_DEPTH`].
+    #[error("value depth {depth} exceeds maximum")]
+    ValueDepthExceeded {
+        /// Observed depth.
+        depth: u32,
+    },
+
+    /// Canonical value encoding could not be decoded.
+    #[error("value decode failed: {reason}")]
+    ValueDecode {
+        /// Human-readable reason.
+        reason: String,
+    },
+
+    /// Integer division by zero in a transduction op.
+    #[error("divide by zero in `{function}`")]
+    DivideByZero {
+        /// Function / op name.
+        function: String,
+    },
+
+    /// Ganglion input port has no matching member cells.
+    #[error("port unsatisfied: kind `{kind}`")]
+    PortUnsatisfied {
+        /// Port signal kind.
+        kind: String,
+    },
+
+    /// Value shape at a port did not match the port contract.
+    #[error("port shape mismatch: kind `{kind}`: expected {expected}, got {got}")]
+    PortShapeMismatch {
+        /// Port signal kind.
+        kind: String,
+        /// Expected shape.
+        expected: String,
+        /// Actual shape.
+        got: String,
+    },
+
+    /// `stimulate` was re-entered from inside a cascade (forbidden).
+    #[error("stimulate re-entered")]
+    StimulateReentered,
+
+    /// Effector sink persistence is not available yet.
+    #[error("sink persistence unavailable until milestone {since_milestone}")]
+    SinkPersistenceUnavailable {
+        /// Milestone that will implement durable sinks.
+        since_milestone: u32,
+    },
+
+    /// Version solving is not available yet (exact pins only in M12).
+    #[error("version solve unavailable until milestone {since_milestone}")]
+    VersionSolveUnavailable {
+        /// Milestone that will implement a solver.
+        since_milestone: u32,
     },
 }
 

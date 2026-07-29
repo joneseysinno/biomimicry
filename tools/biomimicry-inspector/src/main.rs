@@ -91,7 +91,7 @@ fn run_cascade(seed: u64, max_ticks: u64, do_checkpoint: bool) {
         .cadence(Cadence::new(2))
         .population_size(2)
         .seed_gene(handles.cascade_path)
-        .regulator(NetworkRegulator::new(m4_network(handles.effector)))
+        .regulator(NetworkRegulator::new(m4_network(handles.downstream)))
         .transducer(m4_transducer(handles.cascade_path))
         .build()
         .expect("build");

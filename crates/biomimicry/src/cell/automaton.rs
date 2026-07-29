@@ -170,11 +170,10 @@ impl Cell {
 
         self.last_inbound_kind = Some(signal.kind.clone());
 
+        // Do not re-enqueue `Receive` here — the scheduler is already draining
+        // that op. Re-enqueueing it causes an infinite Receive→Receive storm
+        // that corrupts stateful transduction (folds / binary arith buffers).
         let mut enqueued = Vec::new();
-        let receive_op = Operation::Receive(signal.clone());
-        self.enqueue(receive_op.clone());
-        enqueued.push(receive_op);
-
         for gene_id in &m.matched {
             for op in operations_for_matched_gene(*gene_id, &self.genome, signal) {
                 self.enqueue(op.clone());

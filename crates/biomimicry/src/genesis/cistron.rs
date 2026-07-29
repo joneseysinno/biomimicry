@@ -14,6 +14,7 @@ use blake3::Hasher;
 use super::hash::{finalize_u128, update_str, update_u32};
 use super::{EndpointPolarity, EndpointRef, Role};
 use crate::signal::Scope;
+use crate::transduction::TransductionSpec;
 
 /// Gene / cistron kind label (e.g. `"sensory_spike"`).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -76,6 +77,8 @@ pub struct Cistron {
     pub weight_milli: Option<i32>,
     /// Directed vs undirected.
     pub directionality: Directionality,
+    /// Enzyme body coded by this gene (`None` = no cascade / host override only).
+    pub transduction: Option<TransductionSpec>,
 }
 
 impl Cistron {
@@ -87,6 +90,7 @@ impl Cistron {
             endpoints,
             weight_milli: None,
             directionality: Directionality::Directed,
+            transduction: None,
         }
     }
 
@@ -104,6 +108,13 @@ impl Cistron {
         self
     }
 
+    /// Builder: attach a declarative transduction spec (the gene's enzyme).
+    #[must_use]
+    pub fn with_transduction(mut self, spec: TransductionSpec) -> Self {
+        self.transduction = Some(spec);
+        self
+    }
+
     /// Endpoints sorted into the pinned canonical order.
     ///
     /// Sort key: `(primitive_type_id, node_id, polarity, role, scope)`.
@@ -116,8 +127,8 @@ impl Cistron {
 
     /// Content-addressed identity of this cistron's canonical form.
     ///
-    /// Hash domain: `(kind, directionality, sorted endpoints)` where each
-    /// endpoint contributes `(PrimitiveNodeId, polarity, role, scope)`.
+    /// Hash domain: `(kind, directionality, sorted endpoints, transduction digest)`
+    /// where each endpoint contributes `(PrimitiveNodeId, polarity, role, scope)`.
     /// Spread / weight never participate.
     #[must_use]
     pub fn content_id(&self) -> u128 {
@@ -138,6 +149,15 @@ impl Cistron {
                 Some(scope) => hasher.update(&[scope.wire_tag()]),
             };
         }
+        match &self.transduction {
+            None => {
+                hasher.update(&[0u8]);
+            }
+            Some(spec) => {
+                hasher.update(&[1u8]);
+                spec.hash_into(&mut hasher);
+            }
+        }
         finalize_u128(&hasher)
     }
 
@@ -145,6 +165,7 @@ impl Cistron {
     ///
     /// Kind, directionality, roles, scopes, and declaration-relative structure
     /// are preserved; weight is cleared (re-derived at compile from spread).
+    /// A present transduction becomes its inhibitory form.
     #[must_use]
     pub fn complement(&self) -> Self {
         Self {
@@ -156,6 +177,7 @@ impl Cistron {
                 .collect(),
             weight_milli: None,
             directionality: self.directionality,
+            transduction: self.transduction.as_ref().map(TransductionSpec::inhibitory),
         }
     }
 

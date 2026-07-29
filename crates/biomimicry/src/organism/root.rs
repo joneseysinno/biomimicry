@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::attractor::DEFAULT_CONVERGENCE_WINDOW;
 use crate::causality::{CausalClock, CommitmentGate};
 use crate::cell::CellId;
+use crate::effector::{EffectorId, EffectorSink, MemoryEffectorSink, write_effect};
 use crate::ganglion::{Ganglion, GanglionHandle, GanglionView, view as ganglion_view};
 use crate::genesis::{GeneId, Genome};
 use crate::homeostasis::PopulationSizeLoop;
@@ -15,6 +16,7 @@ use crate::membrane::{
 };
 use crate::metabolism::{Population, Scheduler, SpaceConfig};
 use crate::sensorium::{ImmuneFlag, ReadoutCollector, SignalSample, validate_integrity};
+use crate::signal::Value;
 use crate::substrate::Store;
 
 /// The thing you instantiate and **perturb**.
@@ -64,6 +66,10 @@ pub struct Organism<S: Store> {
     ///
     /// Defaults to [`build_echo_options`]; AEC replaces with domain builders.
     pub escalation_builder: fn(&crate::signal::Signal) -> Vec<EscalationOption>,
+    /// Organism-owned effector sink (working + committed).
+    pub effect_sink: MemoryEffectorSink,
+    /// Re-entrancy guard for [`crate::ganglion::stimulate`].
+    pub(crate) stimulating: bool,
 }
 
 impl<S: Store> Organism<S> {
@@ -157,6 +163,44 @@ impl<S: Store> Organism<S> {
     ) {
         self.escalation_builder = builder;
     }
+
+    /// Snapshot of the effector sink's working state.
+    #[must_use]
+    pub fn effects(&self) -> BTreeMap<EffectorId, Value> {
+        self.effect_sink.snapshot()
+    }
+
+    /// Diff of working effects against a prior snapshot.
+    #[must_use]
+    pub fn effect_diff(
+        &self,
+        prior: &BTreeMap<EffectorId, Value>,
+    ) -> BTreeMap<EffectorId, Value> {
+        self.effect_sink.diff_from(prior)
+    }
+
+    /// Drain pending cascade effects into the organism sink and causal log.
+    pub(crate) fn drain_effects_into_sink(&mut self) {
+        let pending = self.scheduler.drain_pending_effects();
+        if pending.is_empty() {
+            return;
+        }
+        let mut events = Vec::new();
+        for pe in pending {
+            let _ = write_effect(
+                &mut self.effect_sink,
+                pe.id,
+                pe.value,
+                pe.stamp,
+                Some(pe.parent),
+                pe.cell,
+                &mut events,
+            );
+        }
+        for ev in events {
+            self.scheduler.log.push(ev);
+        }
+    }
 }
 
 /// Internal constructor used by the builder.
@@ -190,5 +234,7 @@ pub(crate) fn new_organism<S: Store>(
         default_boundary_template: None,
         escalation_inbox: Vec::new(),
         escalation_builder: build_echo_options,
+        effect_sink: MemoryEffectorSink::new(),
+        stimulating: false,
     }
 }

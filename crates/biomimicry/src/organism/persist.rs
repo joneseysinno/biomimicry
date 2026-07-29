@@ -9,6 +9,7 @@ impl<S: Store> Organism<S> {
     /// Open the commitment gate (allows checkpoint without `force`).
     pub fn open_commit_gate(&mut self) {
         self.commit_gate.open = true;
+        self.effect_sink.commit_working();
     }
 
     /// Close the commitment gate.
@@ -44,6 +45,7 @@ impl<S: Store> Organism<S> {
         if !force && !self.commit_gate.try_commit() {
             return Err(BiomimicryError::CommitmentGateClosed);
         }
+        self.effect_sink.commit_working();
         self.flush_causal()?;
         self.store
             .prepare_snapshot_log(Some(self.scheduler.log.clone()));

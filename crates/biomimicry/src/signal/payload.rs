@@ -1,11 +1,17 @@
 //! Signal payload body and observation metadata.
+//!
+//! [`Payload::body`] is the **canonical encoding** of a [`super::Value`].
+//! Construct typed payloads via [`Payload::of`]; decode with [`Payload::value`].
+//! [`Payload::digest`] hashes that encoding (never the in-memory enum layout).
 
 use std::collections::BTreeMap;
 
 use blake3::Hasher;
 use smol_str::SmolStr;
 
+use crate::error::Result;
 use crate::genesis::hash::{finalize_u128, update_str, update_u32};
+use crate::signal::Value;
 
 /// Typed metadata tag. [`Tag::OBSERVATION`] marks sensorium observation signals.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -67,7 +73,9 @@ impl From<&str> for MetaValue {
 /// Payload body + metadata map carried by a [`super::Signal`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Payload {
-    /// Opaque content bytes (typed interpretation is gene-defined).
+    /// Canonical encoding of [`Value`]; construct via [`Payload::of`].
+    ///
+    /// Public for the [`Value::Bytes`] escape hatch and wire compatibility.
     pub body: Vec<u8>,
     /// Optional tagged metadata (e.g. observation).
     pub metadata: BTreeMap<Tag, MetaValue>,
@@ -77,16 +85,27 @@ pub struct Payload {
 
 impl Default for Payload {
     fn default() -> Self {
-        Self {
-            body: Vec::new(),
-            metadata: BTreeMap::new(),
-            strength_milli: 1000,
-        }
+        // `Value::Unit` encoding — one hash authority for empty payloads.
+        Self::of(Value::Unit)
     }
 }
 
 impl Payload {
-    /// Construct from raw body bytes.
+    /// Construct a payload whose body is the canonical encoding of `value`.
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)] // owned Value is the natural construction API
+    pub fn of(value: Value) -> Self {
+        let body = value
+            .encode()
+            .expect("Value::of requires depth-checked values; Unit always encodes");
+        Self {
+            body,
+            metadata: BTreeMap::new(),
+            strength_milli: 1000,
+        }
+    }
+
+    /// Construct from raw body bytes (prefer [`Payload::of`] for typed values).
     #[must_use]
     pub fn new(body: impl Into<Vec<u8>>) -> Self {
         Self {
@@ -96,10 +115,19 @@ impl Payload {
         }
     }
 
-    /// Empty payload.
+    /// Empty payload ([`Value::Unit`]).
     #[must_use]
     pub fn empty() -> Self {
         Self::default()
+    }
+
+    /// Decode [`Self::body`] as a [`Value`].
+    pub fn value(&self) -> Result<Value> {
+        if self.body.is_empty() {
+            // Pre-0.3 raw empties still decode as Unit.
+            return Ok(Value::Unit);
+        }
+        Value::decode(&self.body)
     }
 
     /// Builder: set strength milli.
@@ -129,6 +157,9 @@ impl Payload {
     }
 
     /// Content digest for [`super::SignalId`] hashing.
+    ///
+    /// Hashes the canonical `body` encoding (plus strength and metadata) —
+    /// never the in-memory [`Value`] layout — so there is one hash authority.
     #[must_use]
     pub fn digest(&self) -> u128 {
         let mut hasher = Hasher::new();

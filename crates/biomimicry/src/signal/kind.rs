@@ -34,6 +34,29 @@ impl SignalKind {
         Self(SmolStr::new(label.as_ref()))
     }
 
+    /// Qualified kind formatter: `block::local` (M12 namespacing).
+    ///
+    /// Authors write local names inside a block; the linker rewrites match keys
+    /// via this formatter so independently authored fragments cannot collide.
+    #[must_use]
+    pub fn qualified(block: &str, local: impl AsRef<str>) -> Self {
+        Self::new(format!("{}::{}", block, local.as_ref()))
+    }
+
+    /// Local suffix after the last `::`, or the whole label if unqualified.
+    #[must_use]
+    pub fn local_name(&self) -> &str {
+        self.as_str()
+            .rsplit_once("::")
+            .map_or(self.as_str(), |(_, local)| local)
+    }
+
+    /// Whether this kind contains a `::` qualification separator.
+    #[must_use]
+    pub fn is_qualified(&self) -> bool {
+        self.as_str().contains("::")
+    }
+
     /// Borrow the kind label.
     #[must_use]
     pub fn as_str(&self) -> &str {

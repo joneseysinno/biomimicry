@@ -19,7 +19,7 @@ pub struct M4Handles {
     /// Gene with Receptor+/Expression+/Transduction+.
     pub cascade_path: GeneId,
     /// Second gene activated by the rule network.
-    pub effector: GeneId,
+    pub downstream: GeneId,
 }
 
 /// Compile cascade DNA and resolve gene ids.
@@ -38,31 +38,31 @@ pub fn m4_handles() -> M4Handles {
         })
         .map(|g| g.id)
         .expect("cascade_path");
-    let effector = genome
+    let downstream = genome
         .iter()
         .find(|g| {
-            g.cistron.kind.as_str() == "effector"
+            g.cistron.kind.as_str() == "downstream"
                 && g.cistron.endpoints.iter().any(|ep| {
                     ep.primitive == crate::genesis::Primitive::Receptor
                         && ep.polarity == crate::genesis::EndpointPolarity::Positive
                 })
         })
         .map(|g| g.id)
-        .expect("effector");
+        .expect("downstream");
     M4Handles {
         genome,
         cascade_path,
-        effector,
+        downstream,
     }
 }
 
-/// Rule network: on trigger kind → activate effector.
+/// Rule network: on trigger kind → activate downstream.
 #[must_use]
-pub fn m4_network(effector: GeneId) -> RuleNetwork {
+pub fn m4_network(downstream: GeneId) -> RuleNetwork {
     RuleNetwork::new().with_rule(
-        RegulatoryRule::new("activate_effector")
+        RegulatoryRule::new("activate_downstream")
             .with_condition(RuleCondition::SignalKind(SignalKind::new("trigger")))
-            .with_express([effector]),
+            .with_express([downstream]),
     )
 }
 
@@ -89,7 +89,7 @@ pub fn m4_seeded_run(seed: u64) -> (Scheduler, Population, M4Handles) {
     }
     let pop = Population::from_cells(cells);
     let mut sched = Scheduler::new(seed, Cadence::new(2));
-    sched.with_regulator(NetworkRegulator::new(m4_network(handles.effector)));
+    sched.with_regulator(NetworkRegulator::new(m4_network(handles.downstream)));
     sched.with_transducer(m4_transducer(handles.cascade_path));
     let sig = Signal::new(
         SignalType::Operational,
@@ -131,12 +131,12 @@ mod tests {
         assert!(transduce < emit, "transduce before emit: {tags:?}");
         assert!(emit < deliver, "emit before deliver: {tags:?}");
 
-        // Rule network activated effector on at least one cell.
+        // Rule network activated downstream on at least one cell.
         assert!(
             pop.cells()
                 .iter()
-                .any(|c| c.expression.is_active(handles.effector)),
-            "effector should be active after Phase 1 rules"
+                .any(|c| c.expression.is_active(handles.downstream)),
+            "downstream should be active after Phase 1 rules"
         );
     }
 
@@ -154,7 +154,7 @@ mod tests {
         sched.phase2.push(ScheduledOp {
             cell: CellId(1),
             op: Operation::Express {
-                gene: handles.effector,
+                gene: handles.downstream,
                 on: false,
             },
         });

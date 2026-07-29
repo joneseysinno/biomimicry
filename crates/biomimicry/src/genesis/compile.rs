@@ -1,10 +1,12 @@
-//! Compile a DNA GRN into a genome by traversal + complement closure.
+//! Compile a DNA GRN into a genome by traversal + complement closure + enzyme resolution.
 //!
-//! Two documented steps:
+//! Three documented steps:
 //! 1. **Traversal** — one [`GeneOrigin::Traversed`] gene per valid cistron.
 //! 2. **Closure** — for each traversed gene, ensure its complement is registered;
 //!    if absent, register a [`GeneOrigin::Complement`] gene (genome-level derived,
 //!    not backed by its own DNA cistron).
+//! 3. **Enzyme resolution** — for every gene carrying a transduction spec, build its
+//!    [`crate::transduction::Cascade`] and store it on the genome.
 
 use std::sync::Arc;
 
@@ -13,6 +15,7 @@ use super::gene::{Gene, GeneId, GeneOrigin};
 use super::genome::Genome;
 use super::grn::{Grn, validate_cistron};
 use crate::error::{BiomimicryError, Result};
+use crate::transduction::cascade_from_spec;
 
 /// Traverse `grn`, register every valid gene cistron, then close under
 /// complement. Returns a shareable [`Arc<Genome>`].
@@ -74,6 +77,18 @@ pub fn compile(grn: &Grn) -> Result<Arc<Genome>> {
             return Err(BiomimicryError::CompileFailed {
                 reason: format!("complement closure failed for gene {id}", id = gene.id),
             });
+        }
+    }
+
+    // Step 3: enzyme resolution — cascade per spec-carrying gene.
+    // Complement-derived genes already carry inhibitory specs via `Cistron::complement`.
+    let gene_ids: Vec<GeneId> = genome.iter().map(|g| g.id).collect();
+    for id in gene_ids {
+        let Some(gene) = genome.get(id) else {
+            continue;
+        };
+        if let Some(spec) = &gene.cistron.transduction {
+            genome.insert_cascade(id, cascade_from_spec(spec));
         }
     }
 

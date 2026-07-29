@@ -31,6 +31,7 @@ impl<S: Store> Organism<S> {
             // Align K with effective_k when a single ganglion owns the circuit.
             self.scheduler.cadence.k = self.effective_k();
             self.scheduler.outer_cycle(&mut self.population)?;
+            self.drain_effects_into_sink();
             for sample in self.scheduler.take_observations() {
                 self.collector.observe(sample);
             }

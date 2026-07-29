@@ -1,8 +1,8 @@
 //! Target 3: detect ringing vs. converging.
 //!
 //! Sensing/compare are milli-ready. [`AttractorStabilityLoop::effect`] is an
-//! honest **no-op brake** (records last error) until a future effector design —
-//! not wired into default [`crate::organism::Organism::settle`].
+//! honest **no-op brake** (records last error) until a future corrective-step
+//! design — not wired into default [`crate::organism::Organism::settle`].
 
 use crate::error::Result;
 use crate::homeostasis::HomeostaticLoop;

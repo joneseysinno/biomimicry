@@ -23,6 +23,8 @@
 //! | [`medium`] | Signaling delivery / diffusion |
 //! | [`expression`] | Phase 1 rule network |
 //! | [`transduction`] | Phase 2 cascades |
+//! | [`effector`] | Phase 2 writes leaving the signal stream |
+//! | [`blocks`] | Genome linker — compose DNA fragments |
 //! | [`homeostasis`] | Negative-feedback loops |
 //! | [`attractor`] | Landscape / convergence |
 //! | [`membrane`] | Boundary / interface model |
@@ -39,8 +41,10 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod attractor;
+pub mod blocks;
 pub mod causality;
 pub mod cell;
+pub mod effector;
 pub mod error;
 pub mod expression;
 pub mod ganglion;

@@ -24,6 +24,9 @@ inspector = []
 thiserror = { workspace = true }
 blake3 = { workspace = true }
 smol_str = { workspace = true }
+semver = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

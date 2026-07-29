@@ -15,7 +15,7 @@ fn main() {
         .population_size(2)
         .target_population(2)
         .seed_gene(handles.cascade_path)
-        .regulator(NetworkRegulator::new(m4_network(handles.effector)))
+        .regulator(NetworkRegulator::new(m4_network(handles.downstream)))
         .transducer(m4_transducer(handles.cascade_path))
         .build()
         .expect("build");

@@ -25,7 +25,7 @@ pub use compile::*;
 pub use debug::*;
 pub use distance::*;
 pub use endpoint::*;
-pub use fixture::{cascade_dna, toy_dna, with_dangling};
+pub use fixture::{arith_dna, cascade_dna, toy_dna, with_dangling};
 pub use gene::*;
 pub use genome::*;
 pub use grn::*;

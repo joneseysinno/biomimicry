@@ -2,6 +2,7 @@
 //!
 //! Declarations and re-exports only — no types or logic live here.
 
+pub mod arith_fixture;
 pub mod builder;
 pub mod fixture;
 pub mod membrane;
@@ -10,6 +11,7 @@ pub mod perturb;
 pub mod root;
 pub mod settle;
 
+pub use arith_fixture::*;
 pub use builder::*;
 pub use fixture::*;
 pub use root::*;

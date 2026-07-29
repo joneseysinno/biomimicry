@@ -6,8 +6,12 @@ pub mod debug;
 pub mod handle;
 pub mod health;
 pub mod population;
+pub mod port;
+pub mod stimulate;
 
 pub use debug::*;
 pub use handle::*;
 pub use health::*;
 pub use population::*;
+pub use port::*;
+pub use stimulate::*;

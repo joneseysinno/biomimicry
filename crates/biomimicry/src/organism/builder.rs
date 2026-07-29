@@ -166,9 +166,10 @@ impl OrganismBuilder {
         if let Some(r) = self.regulator {
             scheduler.with_regulator(r);
         }
-        if let Some(t) = self.transducer {
-            scheduler.with_transducer(t);
-        }
+        let transducer = self
+            .transducer
+            .unwrap_or_else(|| CascadeTransducer::from_genome(&genome));
+        scheduler.with_transducer(transducer);
         scheduler.enable_divide(next_cell_id, Some(seed_gene));
 
         let target = self.target_population.unwrap_or(self.population_size);

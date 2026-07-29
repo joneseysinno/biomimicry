@@ -141,6 +141,23 @@ impl Scheduler {
         std::mem::take(&mut self.pending_observations)
     }
 
+    /// Drain effector writes queued by a [`CascadeTransducer`] during Phase 2.
+    pub fn drain_pending_effects(&self) -> Vec<crate::transduction::PendingEffect> {
+        match &self.transducer {
+            Phase2Brain::Cascade(t) => t.drain_pending_effects(),
+            Phase2Brain::Echo(_) => Vec::new(),
+        }
+    }
+
+    /// Latest cascade output values keyed by signal kind.
+    #[must_use]
+    pub fn cascade_last_outputs(&self) -> std::collections::BTreeMap<String, crate::signal::Value> {
+        match &self.transducer {
+            Phase2Brain::Cascade(t) => t.last_outputs(),
+            Phase2Brain::Echo(_) => std::collections::BTreeMap::new(),
+        }
+    }
+
     /// Replace the echo follow-on kind (no-op if cascade brain is installed).
     pub fn set_echo_kind(&mut self, kind: impl Into<crate::signal::SignalKind>) {
         if let Phase2Brain::Echo(echo) = &mut self.transducer {

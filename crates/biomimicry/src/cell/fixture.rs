@@ -68,11 +68,12 @@ mod tests {
         assert!(reaction.matched_genes.contains(&spike));
         assert!(reaction.dropped_reason.is_none());
 
+        // Receive is drained by the scheduler — not re-enqueued (would storm).
         assert!(
             reaction
                 .enqueued
                 .iter()
-                .any(|op| matches!(op, Operation::Receive(_)))
+                .all(|op| !matches!(op, Operation::Receive(_)))
         );
         assert!(reaction.enqueued.iter().any(|op| {
             matches!(

@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use super::{EndpointPolarity, Gene, GeneId, GeneOrigin, Grn, Primitive};
+use crate::transduction::Cascade;
 
 /// Compiled genome: the catalog of expressible genes.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -15,6 +16,8 @@ pub struct Genome {
     by_kind: BTreeMap<String, BTreeSet<GeneId>>,
     /// Reverse participation index: all genes where a primitive appears at a polarity.
     by_participation: BTreeMap<(Primitive, EndpointPolarity), BTreeSet<GeneId>>,
+    /// Cascades resolved from cistron transduction specs (compile step 3).
+    cascades: BTreeMap<GeneId, Cascade>,
 }
 
 impl Genome {
@@ -102,6 +105,17 @@ impl Genome {
             .filter(|g| matches!(g.origin, GeneOrigin::Traversed))
             .map(|g| g.id)
             .collect()
+    }
+
+    /// Cascades derived from gene transduction specs (compile step 3).
+    #[must_use]
+    pub fn cascades(&self) -> &BTreeMap<GeneId, Cascade> {
+        &self.cascades
+    }
+
+    /// Register a resolved cascade for `gene` (compile step 3 / tests).
+    pub(crate) fn insert_cascade(&mut self, gene: GeneId, cascade: Cascade) {
+        self.cascades.insert(gene, cascade);
     }
 
     /// Insert a gene and maintain indices. Duplicate id is a no-op (same gene).

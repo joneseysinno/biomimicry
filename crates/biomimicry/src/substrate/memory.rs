@@ -489,6 +489,8 @@ mod durable {
             endpoints,
             weight_milli,
             directionality,
+            // M11 wire: transduction specs land in a later snapshot revision.
+            transduction: None,
         })
     }
 

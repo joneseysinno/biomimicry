@@ -8,3 +8,6 @@
 *.swo
 .DS_Store
 Thumbs.db
+/crates/biomimicry-aec/
+/crates/biomimicry-genomes/
+/crates/biomimicry-substrate/

@@ -8,6 +8,7 @@ pub mod payload;
 pub mod phase;
 pub mod scope;
 pub mod stamp;
+pub mod value;
 
 pub use event::*;
 pub use kind::*;
@@ -15,3 +16,4 @@ pub use payload::*;
 pub use phase::*;
 pub use scope::{Scope, SignalScope, scope_compatible};
 pub use stamp::*;
+pub use value::*;
